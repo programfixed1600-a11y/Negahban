@@ -1,5 +1,19 @@
 const db = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
 
+// یک تابع برای نمایش حالت لودینگ روی دکمه‌ها
+function setLoading(btn, isLoading, text = "در حال ذخیره...") {
+  if (isLoading) {
+    btn.dataset.oldText = btn.textContent;
+    btn.textContent = text;
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
+  } else {
+    btn.textContent = btn.dataset.oldText || text;
+    btn.disabled = false;
+    btn.style.opacity = "1";
+  }
+}
+
 async function checkAuth() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) return (window.location.href = "index.html");
@@ -33,7 +47,7 @@ async function loadCompaniesAndSites() {
         <div class="item">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>
-            <button onclick="deleteItem('companies', '${c.id}')" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
+            <button onclick="deleteItem('companies', '${c.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
           </div>
         </div>`;
       cSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
@@ -52,7 +66,7 @@ async function loadCompaniesAndSites() {
         <div class="item">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div><strong>${s.name}</strong><br><small>${s.companies?.name || ''}</small></div>
-            <button onclick="deleteItem('sites', '${s.id}')" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
+            <button onclick="deleteItem('sites', '${s.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
           </div>
         </div>`;
       pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.companies?.name || ''})</option>`;
@@ -62,18 +76,24 @@ async function loadCompaniesAndSites() {
 
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const btn = e.target.querySelector("button");
+  setLoading(btn, true);
   await db.from("companies").insert([{ name: document.getElementById("c-name").value, contact_phone: document.getElementById("c-phone").value }]);
   document.getElementById("c-name").value = ""; document.getElementById("c-phone").value = "";
   await loadAllData();
+  setLoading(btn, false, "افزودن شرکت");
 });
 
 document.getElementById("site-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const company_id = document.getElementById("s-company").value;
   if (!company_id) return alert("ابتدا یک شرکت انتخاب کنید.");
+  const btn = e.target.querySelector("button");
+  setLoading(btn, true);
   await db.from("sites").insert([{ company_id, name: document.getElementById("s-name").value, address: document.getElementById("s-address").value }]);
   document.getElementById("s-name").value = ""; document.getElementById("s-address").value = "";
   await loadAllData();
+  setLoading(btn, false, "افزودن سایت");
 });
 
 // --- بخش نگهبان‌ها ---
@@ -87,7 +107,7 @@ async function loadGuards() {
         <div class="item">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div><strong>${g.full_name}</strong><br><small>${g.phone || 'بدون شماره'}</small></div>
-            <button onclick="deleteItem('guards', '${g.id}')" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
+            <button onclick="deleteItem('guards', '${g.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
           </div>
         </div>`;
     });
@@ -96,9 +116,12 @@ async function loadGuards() {
 
 document.getElementById("guard-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const btn = e.target.querySelector("button");
+  setLoading(btn, true);
   await db.from("guards").insert([{ full_name: document.getElementById("g-name").value, phone: document.getElementById("g-phone").value }]);
   document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = "";
   await loadAllData();
+  setLoading(btn, false, "افزودن نگهبان");
 });
 
 // --- بخش پست‌های نگهبانی ---
@@ -112,7 +135,7 @@ async function loadPosts() {
         <div class="item">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div><strong>${p.name}</strong><br><small>سایت: ${p.sites?.name || 'نامشخص'}</small></div>
-            <button onclick="deleteItem('posts', '${p.id}')" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
+            <button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
           </div>
         </div>`;
     });
@@ -128,8 +151,7 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   if (!p_name) return alert("لطفاً نام پست را وارد کنید.");
 
   const btn = e.target.querySelector("button");
-  btn.textContent = "در حال ذخیره...";
-  btn.disabled = true;
+  setLoading(btn, true);
 
   const { error } = await db.from("posts").insert([{ site_id, name: p_name }]);
   
@@ -139,17 +161,26 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
     document.getElementById("p-name").value = "";
     await loadAllData();
   }
-
-  btn.textContent = "افزودن پست";
-  btn.disabled = false;
+  setLoading(btn, false, "افزودن پست");
 });
 
 // تابع حذف عمومی
-window.deleteItem = async function(table, id) {
+window.deleteItem = async function(table, id, btnElement) {
   if (!confirm("آیا از حذف این مورد مطمئن هستید؟")) return;
+  
+  const oldText = btnElement.textContent;
+  btnElement.textContent = "...";
+  btnElement.disabled = true;
+
   const { error } = await db.from(table).delete().eq('id', id);
-  if (error) alert("خطا در حذف: " + error.message);
-  else await loadAllData();
+  
+  if (error) {
+    alert("خطا در حذف: " + error.message);
+    btnElement.textContent = oldText;
+    btnElement.disabled = false;
+  } else {
+    await loadAllData();
+  }
 }
 
 checkAuth();
