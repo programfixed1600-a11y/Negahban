@@ -4,7 +4,7 @@ async function checkAuth() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) return (window.location.href = "index.html");
   document.getElementById("user-email").textContent = session.user.email;
-  loadAllData();
+  await loadAllData();
 }
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
@@ -12,7 +12,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
   window.location.href = "index.html";
 });
 
-// تابعی برای بارگذاری همه داده‌ها با هم
 async function loadAllData() {
   await loadCompaniesAndSites();
   await loadGuards();
@@ -21,7 +20,6 @@ async function loadAllData() {
 
 // --- بخش شرکت‌ها و سایت‌ها ---
 async function loadCompaniesAndSites() {
-  // شرکت‌ها
   const { data: companies } = await db.from("companies").select("*").order("created_at", { ascending: false });
   const cList = document.getElementById("company-list");
   const cSelect = document.getElementById("s-company");
@@ -31,22 +29,33 @@ async function loadCompaniesAndSites() {
   
   if (companies) {
     companies.forEach(c => {
-      cList.innerHTML += `<div class="item"><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>`;
+      cList.innerHTML += `
+        <div class="item">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>
+            <button onclick="deleteItem('companies', '${c.id}')" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
+          </div>
+        </div>`;
       cSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
     });
   }
 
-  // سایت‌ها
   const { data: sites } = await db.from("sites").select("*, companies(name)").order("created_at", { ascending: false });
   const sList = document.getElementById("site-list");
   
   sList.innerHTML = "";
-  pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>"; // این خط اضافه شد تا لیست سایت‌ها هر بار خالی و پر شود
+  pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>";
   
   if (sites) {
     sites.forEach(s => {
-      sList.innerHTML += `<div class="item"><strong>${s.name}</strong><br><small>شرکت: ${s.companies?.name}</small></div>`;
-      pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.companies?.name})</option>`;
+      sList.innerHTML += `
+        <div class="item">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><strong>${s.name}</strong><br><small>${s.companies?.name || ''}</small></div>
+            <button onclick="deleteItem('sites', '${s.id}')" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
+          </div>
+        </div>`;
+      pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.companies?.name || ''})</option>`;
     });
   }
 }
@@ -55,7 +64,7 @@ document.getElementById("company-form").addEventListener("submit", async (e) => 
   e.preventDefault();
   await db.from("companies").insert([{ name: document.getElementById("c-name").value, contact_phone: document.getElementById("c-phone").value }]);
   document.getElementById("c-name").value = ""; document.getElementById("c-phone").value = "";
-  loadAllData();
+  await loadAllData();
 });
 
 document.getElementById("site-form").addEventListener("submit", async (e) => {
@@ -64,7 +73,7 @@ document.getElementById("site-form").addEventListener("submit", async (e) => {
   if (!company_id) return alert("ابتدا یک شرکت انتخاب کنید.");
   await db.from("sites").insert([{ company_id, name: document.getElementById("s-name").value, address: document.getElementById("s-address").value }]);
   document.getElementById("s-name").value = ""; document.getElementById("s-address").value = "";
-  loadAllData();
+  await loadAllData();
 });
 
 // --- بخش نگهبان‌ها ---
@@ -74,7 +83,13 @@ async function loadGuards() {
   gList.innerHTML = "";
   if (guards) {
     guards.forEach(g => {
-      gList.innerHTML += `<div class="item"><strong>${g.full_name}</strong><br><small>${g.phone || 'بدون شماره'}</small></div>`;
+      gList.innerHTML += `
+        <div class="item">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><strong>${g.full_name}</strong><br><small>${g.phone || 'بدون شماره'}</small></div>
+            <button onclick="deleteItem('guards', '${g.id}')" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
+          </div>
+        </div>`;
     });
   }
 }
@@ -83,7 +98,7 @@ document.getElementById("guard-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   await db.from("guards").insert([{ full_name: document.getElementById("g-name").value, phone: document.getElementById("g-phone").value }]);
   document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = "";
-  loadAllData();
+  await loadAllData();
 });
 
 // --- بخش پست‌های نگهبانی ---
@@ -93,7 +108,13 @@ async function loadPosts() {
   pList.innerHTML = "";
   if (posts) {
     posts.forEach(p => {
-      pList.innerHTML += `<div class="item"><strong>${p.name}</strong><br><small>سایت: ${p.sites?.name || 'نامشخص'}</small></div>`;
+      pList.innerHTML += `
+        <div class="item">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><strong>${p.name}</strong><br><small>سایت: ${p.sites?.name || 'نامشخص'}</small></div>
+            <button onclick="deleteItem('posts', '${p.id}')" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
+          </div>
+        </div>`;
     });
   }
 }
@@ -116,11 +137,19 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
     alert("خطا در ثبت پست: " + error.message);
   } else {
     document.getElementById("p-name").value = "";
-    await loadAllData(); // رفرش لیست‌ها
+    await loadAllData();
   }
 
   btn.textContent = "افزودن پست";
   btn.disabled = false;
 });
+
+// تابع حذف عمومی
+window.deleteItem = async function(table, id) {
+  if (!confirm("آیا از حذف این مورد مطمئن هستید؟")) return;
+  const { error } = await db.from(table).delete().eq('id', id);
+  if (error) alert("خطا در حذف: " + error.message);
+  else await loadAllData();
+}
 
 checkAuth();
