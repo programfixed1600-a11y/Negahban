@@ -10,25 +10,19 @@
   <style>
     * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
     body { margin:0; background:#0f172a; color:#e2e8f0; display:flex; flex-direction:column; min-height:100vh; }
-    
-    /* هدر */
     header { background:#1e293b; padding:16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; }
     header h1 { margin:0; font-size:18px; }
     header button { background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:inherit; }
-    
-    /* بدنه */
-    main { padding:16px; flex:1; max-width:800px; margin:0 auto; width:100%; }
-    .card { background:#1e293b; padding:20px; border-radius:12px; margin-bottom:20px; border:1px solid #334155; }
+    main { padding:16px; flex:1; max-width:800px; margin:0 auto; width:100%; display: flex; flex-direction: column; gap: 20px; }
+    .card { background:#1e293b; padding:20px; border-radius:12px; border:1px solid #334155; }
     h2 { font-size:16px; margin-top:0; color:#94a3b8; }
-    
-    /* فرم */
-    input { width:100%; padding:12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; margin-bottom:10px; font-family:inherit; }
-    input:focus { outline:none; border-color:#3b82f6; }
+    input, select { width:100%; padding:12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; margin-bottom:10px; font-family:inherit; }
+    input:focus, select:focus { outline:none; border-color:#3b82f6; }
     button.submit { width:100%; padding:12px; border-radius:8px; border:none; background:#3b82f6; color:white; font-weight:bold; cursor:pointer; font-family:inherit; }
     button.submit:hover { background:#2563eb; }
-    
-    /* لیست */
     .item { background:#0f172a; padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid #334155; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -38,20 +32,43 @@
   </header>
   
   <main>
-    <p style="font-size:13px; color:#94a3b8;">کاربر: <span id="user-email"></span></p>
+    <p style="font-size:13px; color:#94a3b8; margin:0;">کاربر: <span id="user-email"></span></p>
 
-    <div class="card">
-      <h2>افزودن شرکت / اداره جدید</h2>
-      <form id="company-form">
-        <input type="text" id="c-name" placeholder="نام شرکت (مثلاً: شهرداری پاکدشت)" required />
-        <input type="text" id="c-phone" placeholder="شماره تماس (اختیاری)" />
-        <button type="submit" class="submit">افزودن شرکت</button>
-      </form>
-    </div>
+    <div class="grid">
+      <!-- بخش شرکت‌ها -->
+      <div>
+        <div class="card" style="margin-bottom:20px;">
+          <h2>افزودن شرکت جدید</h2>
+          <form id="company-form">
+            <input type="text" id="c-name" placeholder="نام شرکت (مثلاً: شهرداری)" required />
+            <input type="text" id="c-phone" placeholder="شماره تماس" />
+            <button type="submit" class="submit">افزودن شرکت</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>لیست شرکت‌ها</h2>
+          <div id="company-list">در حال بارگذاری...</div>
+        </div>
+      </div>
 
-    <div class="card">
-      <h2>لیست شرکت‌ها</h2>
-      <div id="company-list">در حال بارگذاری...</div>
+      <!-- بخش سایت‌ها -->
+      <div>
+        <div class="card" style="margin-bottom:20px;">
+          <h2>افزودن سایت (محل نگهبانی)</h2>
+          <form id="site-form">
+            <select id="s-company" required>
+              <option value="">ابتدا یک شرکت انتخاب کنید...</option>
+            </select>
+            <input type="text" id="s-name" placeholder="نام سایت (مثلاً: ساختمان مرکزی)" required />
+            <input type="text" id="s-address" placeholder="آدرس دقیق" />
+            <button type="submit" class="submit">افزودن سایت</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>لیست سایت‌ها</h2>
+          <div id="site-list">در حال بارگذاری...</div>
+        </div>
+      </div>
     </div>
   </main>
 
