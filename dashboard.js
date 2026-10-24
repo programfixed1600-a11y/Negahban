@@ -28,8 +28,7 @@ async function loadCompaniesAndSites() {
   const pSiteSelect = document.getElementById("p-site");
   
   cList.innerHTML = ""; cSelect.innerHTML = "<option value=''>انتخاب شرکت...</option>";
-  pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>";
-
+  
   if (companies) {
     companies.forEach(c => {
       cList.innerHTML += `<div class="item"><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>`;
@@ -42,6 +41,8 @@ async function loadCompaniesAndSites() {
   const sList = document.getElementById("site-list");
   
   sList.innerHTML = "";
+  pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>"; // این خط اضافه شد تا لیست سایت‌ها هر بار خالی و پر شود
+  
   if (sites) {
     sites.forEach(s => {
       sList.innerHTML += `<div class="item"><strong>${s.name}</strong><br><small>شرکت: ${s.companies?.name}</small></div>`;
@@ -60,7 +61,7 @@ document.getElementById("company-form").addEventListener("submit", async (e) => 
 document.getElementById("site-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const company_id = document.getElementById("s-company").value;
-  if (!company_id) return alert("شرکت را انتخاب کنید");
+  if (!company_id) return alert("ابتدا یک شرکت انتخاب کنید.");
   await db.from("sites").insert([{ company_id, name: document.getElementById("s-name").value, address: document.getElementById("s-address").value }]);
   document.getElementById("s-name").value = ""; document.getElementById("s-address").value = "";
   loadAllData();
@@ -87,12 +88,12 @@ document.getElementById("guard-form").addEventListener("submit", async (e) => {
 
 // --- بخش پست‌های نگهبانی ---
 async function loadPosts() {
-  const { data: posts } = await db.from("posts").select("*, sites(name), companies(name)").order("created_at", { ascending: false });
+  const { data: posts } = await db.from("posts").select("*, sites(name)").order("created_at", { ascending: false });
   const pList = document.getElementById("post-list");
   pList.innerHTML = "";
   if (posts) {
     posts.forEach(p => {
-      pList.innerHTML += `<div class="item"><strong>${p.name}</strong><br><small>سایت: ${p.sites?.name}</small></div>`;
+      pList.innerHTML += `<div class="item"><strong>${p.name}</strong><br><small>سایت: ${p.sites?.name || 'نامشخص'}</small></div>`;
     });
   }
 }
@@ -100,10 +101,26 @@ async function loadPosts() {
 document.getElementById("post-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const site_id = document.getElementById("p-site").value;
-  if (!site_id) return alert("سایت را انتخاب کنید");
-  await db.from("posts").insert([{ site_id, name: document.getElementById("p-name").value }]);
-  document.getElementById("p-name").value = "";
-  loadAllData();
+  const p_name = document.getElementById("p-name").value;
+  
+  if (!site_id) return alert("لطفاً ابتدا یک سایت انتخاب کنید.");
+  if (!p_name) return alert("لطفاً نام پست را وارد کنید.");
+
+  const btn = e.target.querySelector("button");
+  btn.textContent = "در حال ذخیره...";
+  btn.disabled = true;
+
+  const { error } = await db.from("posts").insert([{ site_id, name: p_name }]);
+  
+  if (error) {
+    alert("خطا در ثبت پست: " + error.message);
+  } else {
+    document.getElementById("p-name").value = "";
+    await loadAllData(); // رفرش لیست‌ها
+  }
+
+  btn.textContent = "افزودن پست";
+  btn.disabled = false;
 });
 
 checkAuth();
