@@ -1,126 +1,109 @@
 const db = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
-let currentCompanies = [];
 
-// بررسی لاگین بودن کاربر
 async function checkAuth() {
   const { data: { session } } = await db.auth.getSession();
-  if (!session) {
-    window.location.href = "index.html";
-    return;
-  }
+  if (!session) return (window.location.href = "index.html");
   document.getElementById("user-email").textContent = session.user.email;
-  loadCompanies();
+  loadAllData();
 }
 
-// خروج از حساب
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await db.auth.signOut();
   window.location.href = "index.html";
 });
 
-// بارگذاری لیست شرکت‌ها و پر کردن منوی کشویی
-async function loadCompanies() {
-  const { data, error } = await db.from("companies").select("*").order("created_at", { ascending: false });
-  if (error) return console.error(error);
+// تابعی برای بارگذاری همه داده‌ها با هم
+async function loadAllData() {
+  await loadCompaniesAndSites();
+  await loadGuards();
+  await loadPosts();
+}
+
+// --- بخش شرکت‌ها و سایت‌ها ---
+async function loadCompaniesAndSites() {
+  // شرکت‌ها
+  const { data: companies } = await db.from("companies").select("*").order("created_at", { ascending: false });
+  const cList = document.getElementById("company-list");
+  const cSelect = document.getElementById("s-company");
+  const pSiteSelect = document.getElementById("p-site");
   
-  currentCompanies = data;
-  const list = document.getElementById("company-list");
-  const select = document.getElementById("s-company");
-  
-  list.innerHTML = "";
-  select.innerHTML = "<option value=''>یک شرکت را انتخاب کنید...</option>";
-  
-  if (data.length === 0) {
-    list.innerHTML = "<p style='color:#94a3b8'>هنوز شرکتی ثبت نشده است.</p>";
-  } else {
-    data.forEach(company => {
-      // اضافه کردن به لیست
-      list.innerHTML += `
-        <div class="item">
-          <div>
-            <strong>${company.name}</strong><br>
-            <small style="color:#94a3b8">${company.contact_phone || 'بدون شماره'}</small>
-          </div>
-        </div>
-      `;
-      // اضافه کردن به منوی کشویی
-      select.innerHTML += `<option value="${company.id}">${company.name}</option>`;
+  cList.innerHTML = ""; cSelect.innerHTML = "<option value=''>انتخاب شرکت...</option>";
+  pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>";
+
+  if (companies) {
+    companies.forEach(c => {
+      cList.innerHTML += `<div class="item"><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>`;
+      cSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
     });
   }
-  loadSites(); // بارگذاری سایت‌ها
+
+  // سایت‌ها
+  const { data: sites } = await db.from("sites").select("*, companies(name)").order("created_at", { ascending: false });
+  const sList = document.getElementById("site-list");
+  
+  sList.innerHTML = "";
+  if (sites) {
+    sites.forEach(s => {
+      sList.innerHTML += `<div class="item"><strong>${s.name}</strong><br><small>شرکت: ${s.companies?.name}</small></div>`;
+      pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.companies?.name})</option>`;
+    });
+  }
 }
 
-// ثبت شرکت جدید
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const name = document.getElementById("c-name").value;
-  const phone = document.getElementById("c-phone").value;
-  const btn = e.target.querySelector("button");
-  
-  btn.textContent = "در حال ذخیره...";
-  btn.disabled = true;
-
-  const { error } = await db.from("companies").insert([{ name, contact_phone: phone }]);
-
-  if (error) alert("خطا: " + error.message);
-  else {
-    document.getElementById("c-name").value = "";
-    document.getElementById("c-phone").value = "";
-    loadCompanies();
-  }
-  btn.textContent = "افزودن شرکت";
-  btn.disabled = false;
+  await db.from("companies").insert([{ name: document.getElementById("c-name").value, contact_phone: document.getElementById("c-phone").value }]);
+  document.getElementById("c-name").value = ""; document.getElementById("c-phone").value = "";
+  loadAllData();
 });
 
-// بارگذاری لیست سایت‌ها
-async function loadSites() {
-  const { data, error } = await db.from("sites").select("*, companies(name)").order("created_at", { ascending: false });
-  if (error) return console.error(error);
-  
-  const list = document.getElementById("site-list");
-  list.innerHTML = "";
-  
-  if (data.length === 0) {
-    list.innerHTML = "<p style='color:#94a3b8'>هنوز سایتی ثبت نشده است.</p>";
-    return;
-  }
-
-  data.forEach(site => {
-    list.innerHTML += `
-      <div class="item">
-        <div>
-          <strong>${site.name}</strong><br>
-          <small style="color:#94a3b8">شرکت: ${site.companies ? site.companies.name : 'نامشخص'}</small><br>
-          <small style="color:#94a3b8">آدرس: ${site.address || 'ثبت نشده'}</small>
-        </div>
-      </div>
-    `;
-  });
-}
-
-// ثبت سایت جدید
 document.getElementById("site-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const company_id = document.getElementById("s-company").value;
-  const name = document.getElementById("s-name").value;
-  const address = document.getElementById("s-address").value;
-  const btn = e.target.querySelector("button");
-  
-  if (!company_id) return alert("لطفاً ابتدا یک شرکت انتخاب کنید.");
+  if (!company_id) return alert("شرکت را انتخاب کنید");
+  await db.from("sites").insert([{ company_id, name: document.getElementById("s-name").value, address: document.getElementById("s-address").value }]);
+  document.getElementById("s-name").value = ""; document.getElementById("s-address").value = "";
+  loadAllData();
+});
 
-  btn.textContent = "در حال ذخیره...";
-  btn.disabled = true;
-
-  const { error } = await db.from("sites").insert([{ company_id, name, address }]);
-
-  if (error) alert("خطا: " + error.message);
-  else {
-    document.getElementById("s-name").value = "";
-    document.getElementById("s-address").value = "";
-    loadSites();
+// --- بخش نگهبان‌ها ---
+async function loadGuards() {
+  const { data: guards } = await db.from("guards").select("*").order("created_at", { ascending: false });
+  const gList = document.getElementById("guard-list");
+  gList.innerHTML = "";
+  if (guards) {
+    guards.forEach(g => {
+      gList.innerHTML += `<div class="item"><strong>${g.full_name}</strong><br><small>${g.phone || 'بدون شماره'}</small></div>`;
+    });
   }
-  btn.textContent = "افزودن سایت";
-  btn.disabled = false;
+}
+
+document.getElementById("guard-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await db.from("guards").insert([{ full_name: document.getElementById("g-name").value, phone: document.getElementById("g-phone").value }]);
+  document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = "";
+  loadAllData();
+});
+
+// --- بخش پست‌های نگهبانی ---
+async function loadPosts() {
+  const { data: posts } = await db.from("posts").select("*, sites(name), companies(name)").order("created_at", { ascending: false });
+  const pList = document.getElementById("post-list");
+  pList.innerHTML = "";
+  if (posts) {
+    posts.forEach(p => {
+      pList.innerHTML += `<div class="item"><strong>${p.name}</strong><br><small>سایت: ${p.sites?.name}</small></div>`;
+    });
+  }
+}
+
+document.getElementById("post-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const site_id = document.getElementById("p-site").value;
+  if (!site_id) return alert("سایت را انتخاب کنید");
+  await db.from("posts").insert([{ site_id, name: document.getElementById("p-name").value }]);
+  document.getElementById("p-name").value = "";
+  loadAllData();
 });
 
 checkAuth();

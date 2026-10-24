@@ -13,16 +13,17 @@
     header { background:#1e293b; padding:16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; }
     header h1 { margin:0; font-size:18px; }
     header button { background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:inherit; }
-    main { padding:16px; flex:1; max-width:800px; margin:0 auto; width:100%; display: flex; flex-direction: column; gap: 20px; }
+    main { padding:16px; flex:1; max-width:1000px; margin:0 auto; width:100%; display: flex; flex-direction: column; gap: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
     .card { background:#1e293b; padding:20px; border-radius:12px; border:1px solid #334155; }
-    h2 { font-size:16px; margin-top:0; color:#94a3b8; }
-    input, select { width:100%; padding:12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; margin-bottom:10px; font-family:inherit; }
+    h2 { font-size:15px; margin-top:0; color:#94a3b8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+    input, select { width:100%; padding:10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; margin-bottom:10px; font-family:inherit; font-size: 13px; }
     input:focus, select:focus { outline:none; border-color:#3b82f6; }
-    button.submit { width:100%; padding:12px; border-radius:8px; border:none; background:#3b82f6; color:white; font-weight:bold; cursor:pointer; font-family:inherit; }
+    button.submit { width:100%; padding:10px; border-radius:8px; border:none; background:#3b82f6; color:white; font-weight:bold; cursor:pointer; font-family:inherit; font-size: 14px; }
     button.submit:hover { background:#2563eb; }
-    .item { background:#0f172a; padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid #334155; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+    .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
+    .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -32,43 +33,51 @@
   </header>
   
   <main>
-    <p style="font-size:13px; color:#94a3b8; margin:0;">کاربر: <span id="user-email"></span></p>
-
     <div class="grid">
-      <!-- بخش شرکت‌ها -->
-      <div>
-        <div class="card" style="margin-bottom:20px;">
-          <h2>افزودن شرکت جدید</h2>
-          <form id="company-form">
-            <input type="text" id="c-name" placeholder="نام شرکت (مثلاً: شهرداری)" required />
-            <input type="text" id="c-phone" placeholder="شماره تماس" />
-            <button type="submit" class="submit">افزودن شرکت</button>
-          </form>
-        </div>
-        <div class="card">
-          <h2>لیست شرکت‌ها</h2>
-          <div id="company-list">در حال بارگذاری...</div>
-        </div>
+      <!-- ستون ۱: شرکت‌ها -->
+      <div class="card">
+        <h2>شرکت‌ها</h2>
+        <form id="company-form">
+          <input type="text" id="c-name" placeholder="نام شرکت" required />
+          <input type="text" id="c-phone" placeholder="شماره تماس" />
+          <button type="submit" class="submit">افزودن شرکت</button>
+        </form>
+        <div id="company-list" class="list-container"></div>
       </div>
 
-      <!-- بخش سایت‌ها -->
-      <div>
-        <div class="card" style="margin-bottom:20px;">
-          <h2>افزودن سایت (محل نگهبانی)</h2>
-          <form id="site-form">
-            <select id="s-company" required>
-              <option value="">ابتدا یک شرکت انتخاب کنید...</option>
-            </select>
-            <input type="text" id="s-name" placeholder="نام سایت (مثلاً: ساختمان مرکزی)" required />
-            <input type="text" id="s-address" placeholder="آدرس دقیق" />
-            <button type="submit" class="submit">افزودن سایت</button>
-          </form>
-        </div>
-        <div class="card">
-          <h2>لیست سایت‌ها</h2>
-          <div id="site-list">در حال بارگذاری...</div>
-        </div>
+      <!-- ستون ۲: سایت‌ها -->
+      <div class="card">
+        <h2>سایت‌های نگهبانی</h2>
+        <form id="site-form">
+          <select id="s-company" required></select>
+          <input type="text" id="s-name" placeholder="نام سایت" required />
+          <input type="text" id="s-address" placeholder="آدرس" />
+          <button type="submit" class="submit">افزودن سایت</button>
+        </form>
+        <div id="site-list" class="list-container"></div>
       </div>
+
+      <!-- ستون ۳: نگهبان‌ها -->
+      <div class="card">
+        <h2>پرسنل (نگهبان)</h2>
+        <form id="guard-form">
+          <input type="text" id="g-name" placeholder="نام و نام خانوادگی" required />
+          <input type="text" id="g-phone" placeholder="شماره تماس" />
+          <button type="submit" class="submit">افزودن نگهبان</button>
+        </form>
+        <div id="guard-list" class="list-container"></div>
+      </div>
+    </div>
+
+    <!-- ردیف پایین: پست‌های نگهبانی -->
+    <div class="card">
+      <h2>پست‌های نگهبانی (محل‌های استقرار)</h2>
+      <form id="post-form" style="display:flex; gap:10px;">
+        <select id="p-site" required style="flex:2;"></select>
+        <input type="text" id="p-name" placeholder="نام پست (مثلاً: درب ورودی)" required style="flex:2;" />
+        <button type="submit" class="submit" style="flex:1;">افزودن پست</button>
+      </form>
+      <div id="post-list" class="list-container" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;"></div>
     </div>
   </main>
 
