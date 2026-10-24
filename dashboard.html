@@ -3,41 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>داشبورد | نگهبان‌یار</title>
+  <title>پنل مدیریت | نگهبان‌یار</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0f172a" />
   <link rel="icon" href="icon-192.png" />
   <style>
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: Tahoma, sans-serif; background:#0f172a; color:#e2e8f0;
-           display:flex; min-height:100vh; align-items:center; justify-content:center; padding:16px; }
-    .card { width:100%; max-width:520px; background:#1e293b; padding:24px; border-radius:16px; }
-    h1 { margin:0 0 12px; font-size:20px; }
-    p { color:#94a3b8; font-size:14px; }
-    button { width:100%; padding:12px; border-radius:10px; border:none; background:#ef4444;
-             color:white; font-size:15px; margin-top:16px; cursor:pointer; font-family:inherit; font-weight:bold; }
-    button:hover { background:#dc2626; }
+    * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
+    body { margin:0; background:#0f172a; color:#e2e8f0; display:flex; flex-direction:column; min-height:100vh; }
+    
+    /* هدر */
+    header { background:#1e293b; padding:16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; }
+    header h1 { margin:0; font-size:18px; }
+    header button { background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:inherit; }
+    
+    /* بدنه */
+    main { padding:16px; flex:1; max-width:800px; margin:0 auto; width:100%; }
+    .card { background:#1e293b; padding:20px; border-radius:12px; margin-bottom:20px; border:1px solid #334155; }
+    h2 { font-size:16px; margin-top:0; color:#94a3b8; }
+    
+    /* فرم */
+    input { width:100%; padding:12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; margin-bottom:10px; font-family:inherit; }
+    input:focus { outline:none; border-color:#3b82f6; }
+    button.submit { width:100%; padding:12px; border-radius:8px; border:none; background:#3b82f6; color:white; font-weight:bold; cursor:pointer; font-family:inherit; }
+    button.submit:hover { background:#2563eb; }
+    
+    /* لیست */
+    .item { background:#0f172a; padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid #334155; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>داشبورد</h1>
-    <p id="who">در حال بارگذاری...</p>
-    <button id="logout">خروج</button>
-  </div>
+  <header>
+    <h1>پنل مدیریت نگهبان‌یار</h1>
+    <button id="logout-btn">خروج</button>
+  </header>
+  
+  <main>
+    <p style="font-size:13px; color:#94a3b8;">کاربر: <span id="user-email"></span></p>
+
+    <div class="card">
+      <h2>افزودن شرکت / اداره جدید</h2>
+      <form id="company-form">
+        <input type="text" id="c-name" placeholder="نام شرکت (مثلاً: شهرداری پاکدشت)" required />
+        <input type="text" id="c-phone" placeholder="شماره تماس (اختیاری)" />
+        <button type="submit" class="submit">افزودن شرکت</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>لیست شرکت‌ها</h2>
+      <div id="company-list">در حال بارگذاری...</div>
+    </div>
+  </main>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script>
-    const db = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
-    (async () => {
-      const { data: { session } } = await db.auth.getSession();
-      if (!session) return (location.href = "index.html");
-      document.getElementById("who").textContent = "خوش آمدی: " + session.user.email;
-    })();
-    document.getElementById("logout").addEventListener("click", async () => {
-      await db.auth.signOut();
-      location.href = "index.html";
-    });
-  </script>
+  <script src="dashboard.js"></script>
 </body>
 </html>
