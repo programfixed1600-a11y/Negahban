@@ -1,6 +1,48 @@
-const db = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
+const headers = {
+  "Content-Type": "application/json",
+  "Authorization": `Bearer ${APP_CONFIG.API_KEY}`
+};
+const BASE_URL = APP_CONFIG.API_URL;
 
-// یک تابع برای نمایش حالت لودینگ روی دکمه‌ها
+// بررسی لاگین بودن
+function checkAuth() {
+  const session = localStorage.getItem("fikaro_session");
+  if (!session) return (window.location.href = "index.html");
+  document.getElementById("user-email").textContent = localStorage.getItem("user_email") || "مدیر";
+  loadAllData();
+}
+
+// خروج
+document.getElementById("logout-btn").addEventListener("click", () => {
+  localStorage.removeItem("fikaro_session");
+  localStorage.removeItem("user_email");
+  window.location.href = "index.html";
+});
+
+// توابع کمکی برای ارتباط با دیتابیس
+async function getTable(table) {
+  const res = await fetch(`${BASE_URL}/${table}`, { headers });
+  const data = await res.json();
+  return data.data || data; // بسته به ساختار خروجی فیکارو
+}
+
+async function insertTable(table, payload) {
+  const res = await fetch(`${BASE_URL}/${table}`, {
+    method: "POST", headers, body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "خطا در ذخیره");
+  return data;
+}
+
+async function deleteTable(table, id) {
+  const res = await fetch(`${BASE_URL}/${table}/${id}`, { method: "DELETE", headers });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "خطا در حذف");
+  return data;
+}
+
+// تغییر وضعیت دکمه‌ها
 function setLoading(btn, isLoading, text = "در حال ذخیره...") {
   if (isLoading) {
     btn.dataset.oldText = btn.textContent;
@@ -14,34 +56,26 @@ function setLoading(btn, isLoading, text = "در حال ذخیره...") {
   }
 }
 
-async function checkAuth() {
-  const { data: { session } } = await db.auth.getSession();
-  if (!session) return (window.location.href = "index.html");
-  document.getElementById("user-email").textContent = session.user.email;
-  await loadAllData();
-}
-
-document.getElementById("logout-btn").addEventListener("click", async () => {
-  await db.auth.signOut();
-  window.location.href = "index.html";
-});
-
+// بارگذاری همه داده‌ها
 async function loadAllData() {
-  await loadCompaniesAndSites();
-  await loadGuards();
-  await loadPosts();
+  try {
+    await loadCompaniesAndSites();
+    await loadGuards();
+    await loadPosts();
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 // --- بخش شرکت‌ها و سایت‌ها ---
 async function loadCompaniesAndSites() {
-  const { data: companies } = await db.from("companies").select("*").order("created_at", { ascending: false });
+  const companies = await getTable("companies");
   const cList = document.getElementById("company-list");
   const cSelect = document.getElementById("s-company");
-  const pSiteSelect = document.getElementById("p-site");
   
   cList.innerHTML = ""; cSelect.innerHTML = "<option value=''>انتخاب شرکت...</option>";
   
-  if (companies) {
+  if (companies && Array.isArray(companies)) {
     companies.forEach(c => {
       cList.innerHTML += `
         <div class="item">
@@ -54,22 +88,26 @@ async function loadCompaniesAndSites() {
     });
   }
 
-  const { data: sites } = await db.from("sites").select("*, companies(name)").order("created_at", { ascending: false });
+  const sites = await getTable("sites");
   const sList = document.getElementById("site-list");
+  const pSiteSelect = document.getElementById("p-site");
   
-  sList.innerHTML = "";
-  pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>";
+  sList.innerHTML = ""; pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>";
   
-  if (sites) {
+  if (sites && Array.isArray(sites)) {
     sites.forEach(s => {
+      // پیدا کردن نام شرکت مربوطه
+      const comp = companies.find(c => c.id === s.company_id);
+      const compName = comp ? comp.name : '';
+      
       sList.innerHTML += `
         <div class="item">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><strong>${s.name}</strong><br><small>${s.companies?.name || ''}</small></div>
+            <div><strong>${s.name}</strong><br><small>${compName}</small></div>
             <button onclick="deleteItem('sites', '${s.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
           </div>
         </div>`;
-      pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.companies?.name || ''})</option>`;
+      pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${compName})</option>`;
     });
   }
 }
@@ -78,9 +116,11 @@ document.getElementById("company-form").addEventListener("submit", async (e) => 
   e.preventDefault();
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
-  await db.from("companies").insert([{ name: document.getElementById("c-name").value, contact_phone: document.getElementById("c-phone").value }]);
-  document.getElementById("c-name").value = ""; document.getElementById("c-phone").value = "";
-  await loadAllData();
+  try {
+    await insertTable("companies", { name: document.getElementById("c-name").value, contact_phone: document.getElementById("c-phone").value });
+    document.getElementById("c-name").value = ""; document.getElementById("c-phone").value = "";
+    await loadAllData();
+  } catch(err) { alert(err.message); }
   setLoading(btn, false, "افزودن شرکت");
 });
 
@@ -90,18 +130,20 @@ document.getElementById("site-form").addEventListener("submit", async (e) => {
   if (!company_id) return alert("ابتدا یک شرکت انتخاب کنید.");
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
-  await db.from("sites").insert([{ company_id, name: document.getElementById("s-name").value, address: document.getElementById("s-address").value }]);
-  document.getElementById("s-name").value = ""; document.getElementById("s-address").value = "";
-  await loadAllData();
+  try {
+    await insertTable("sites", { company_id, name: document.getElementById("s-name").value, address: document.getElementById("s-address").value });
+    document.getElementById("s-name").value = ""; document.getElementById("s-address").value = "";
+    await loadAllData();
+  } catch(err) { alert(err.message); }
   setLoading(btn, false, "افزودن سایت");
 });
 
 // --- بخش نگهبان‌ها ---
 async function loadGuards() {
-  const { data: guards } = await db.from("guards").select("*").order("created_at", { ascending: false });
+  const guards = await getTable("guards");
   const gList = document.getElementById("guard-list");
   gList.innerHTML = "";
-  if (guards) {
+  if (guards && Array.isArray(guards)) {
     guards.forEach(g => {
       gList.innerHTML += `
         <div class="item">
@@ -118,23 +160,25 @@ document.getElementById("guard-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
-  await db.from("guards").insert([{ full_name: document.getElementById("g-name").value, phone: document.getElementById("g-phone").value }]);
-  document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = "";
-  await loadAllData();
+  try {
+    await insertTable("guards", { full_name: document.getElementById("g-name").value, phone: document.getElementById("g-phone").value });
+    document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = "";
+    await loadAllData();
+  } catch(err) { alert(err.message); }
   setLoading(btn, false, "افزودن نگهبان");
 });
 
-// --- بخش پست‌های نگهبانی ---
+// --- بخش پست‌ها ---
 async function loadPosts() {
-  const { data: posts } = await db.from("posts").select("*, sites(name)").order("created_at", { ascending: false });
+  const posts = await getTable("posts");
   const pList = document.getElementById("post-list");
   pList.innerHTML = "";
-  if (posts) {
+  if (posts && Array.isArray(posts)) {
     posts.forEach(p => {
       pList.innerHTML += `
         <div class="item">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><strong>${p.name}</strong><br><small>سایت: ${p.sites?.name || 'نامشخص'}</small></div>
+            <div><strong>${p.name}</strong></div>
             <button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
           </div>
         </div>`;
@@ -153,33 +197,28 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
 
-  const { error } = await db.from("posts").insert([{ site_id, name: p_name }]);
-  
-  if (error) {
-    alert("خطا در ثبت پست: " + error.message);
-  } else {
+  try {
+    await insertTable("posts", { site_id, name: p_name });
     document.getElementById("p-name").value = "";
     await loadAllData();
-  }
+  } catch(err) { alert(err.message); }
+  
   setLoading(btn, false, "افزودن پست");
 });
 
-// تابع حذف عمومی
 window.deleteItem = async function(table, id, btnElement) {
   if (!confirm("آیا از حذف این مورد مطمئن هستید؟")) return;
-  
   const oldText = btnElement.textContent;
   btnElement.textContent = "...";
   btnElement.disabled = true;
 
-  const { error } = await db.from(table).delete().eq('id', id);
-  
-  if (error) {
-    alert("خطا در حذف: " + error.message);
+  try {
+    await deleteTable(table, id);
+    await loadAllData();
+  } catch(err) {
+    alert(err.message);
     btnElement.textContent = oldText;
     btnElement.disabled = false;
-  } else {
-    await loadAllData();
   }
 }
 
