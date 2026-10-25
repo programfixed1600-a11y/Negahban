@@ -121,7 +121,6 @@ function renderPosts() {
   const pList = document.getElementById("post-list");
   pList.innerHTML = "";
   globalPosts.forEach(p => {
-    // پیدا کردن نام سایت برای نمایش بهتر
     const site = globalSites.find(s => s.id === p.site_id);
     const siteName = site ? site.name : '';
     pList.innerHTML += `
@@ -164,7 +163,6 @@ function renderShiftSelectors() {
   });
 }
 
-// --- ثبت فرم‌ها ---
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
@@ -217,13 +215,13 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- بخش شیفت‌ها ---
+// --- بخش شیفت‌ها (با اصلاح باگ پاک شدن) ---
 async function loadShifts() {
   let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
   const filterVal = document.getElementById("filter-shift-post").value;
   
-  // فیلتر کردن لیست شیفت‌ها
+  // فیلتر کردن لیست شیفت‌ها فقط برای نمایش
   if (filterVal) {
     shifts = shifts.filter(s => s.post_id === filterVal);
   }
@@ -231,9 +229,12 @@ async function loadShifts() {
   shList.innerHTML = "";
   
   if (shifts.length === 0) {
-    shList.innerHTML = "<p style='color:#94a3b8; text-align:center;'>هیچ شیفتی ثبت نشده یا با فیلتر فعلی همخوانی ندارد.</p>";
+    shList.innerHTML = "<p style='color:#94a3b8; text-align:center;'>هیچ شیفتی برای این فیلتر ثبت نشده است.</p>";
     return;
   }
+
+  // مرتب سازی شیفت‌ها بر اساس زمان شروع
+  shifts.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
 
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
@@ -254,7 +255,7 @@ async function loadShifts() {
   });
 }
 
-// ثبت و تولید خودکار با منطق صحیح (شیفت‌ها پشت سر هم)
+// ثبت و تولید خودکار
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const post_id = document.getElementById("sh-post").value;
@@ -285,15 +286,13 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     const endDate = new Date(parsedDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
-      // گرفتن نفر بعدی از صف چرخش
       const currentGuard = guardsQueue.shift(); 
-      
-      // پایان شیفت این نفر (شروع + ساعت کاری)
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
       const startStr = currentStart.toISOString().slice(0, 16);
       const endStr = currentEnd.toISOString().slice(0, 16);
 
+      // اینجا فقط درخواست اضافه کردن (POST) می‌فرستیم، هیچ درخواست حذفی وجود ندارد
       await insertTable("at", { 
         guard_id: currentGuard, 
         post_id, 
@@ -303,17 +302,17 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       
       successCount++;
       guardsQueue.push(currentGuard);
-      
-      // نکته کلیدی: شیفت بعدی دقیقاً وقتی شروع می‌شود که شیفت فعلی تمام شده
-      currentStart = currentEnd;
+      currentStart = currentEnd; // شروع شیفت بعدی دقیقاً پایان شیفت قبلی است
 
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    alert(`تعداد ${successCount} شیفت برای این پست چیده شد.`);
-    document.getElementById("sh-start").value = "";
+    alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد. (شیفت‌های قبلی حفظ شدند)`);
     
+    // رفرش کردن لیست شیفت‌ها با فیلتر روی پستی که همین الان شیفت ساختیم
+    document.getElementById("filter-shift-post").value = post_id;
     await loadShifts();
+    
   } catch(err) { 
     alert("خطا در ثبت شیفت: " + err.message); 
   }
