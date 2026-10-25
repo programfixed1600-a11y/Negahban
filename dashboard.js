@@ -4,35 +4,12 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-let selectedStartTime = null;
-
-// راه‌اندازی تقویم شمسی (با تاخیر اجرا می‌شود تا jQuery لود شود)
-function initDatepicker() {
-  if (typeof $ === 'undefined' || !$.fn.persianDatepicker) {
-    console.error("کتابخانه تقویم لود نشده است. بررسی کنید فایل‌های پوشه libs آپلود شده‌اند.");
-    return;
-  }
-  
-  $("#sh-start").persianDatepicker({
-    format: 'YYYY/MM/DD HH:mm',
-    timePicker: { enabled: true },
-    initialValue: false,
-    autoClose: true,
-    onSelect: function(unix) {
-      selectedStartTime = new persianDate(unix).toDate();
-    }
-  });
-}
-
 // بررسی لاگین
 function checkAuth() {
   const session = localStorage.getItem("fikaro_session");
   if (!session) return (window.location.href = "index.html");
   document.getElementById("user-email").textContent = localStorage.getItem("user_email") || "مدیر";
-  
   loadAllData();
-  // راه‌اندازی تقویم بعد از بارگذاری اولیه
-  initDatepicker();
 }
 
 document.getElementById("logout-btn").addEventListener("click", () => {
@@ -248,8 +225,17 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const post_id = document.getElementById("sh-post").value;
   const shift_type = document.getElementById("sh-type").value;
   const repeat_count = parseInt(document.getElementById("sh-repeat").value);
+  
+  // گرفتن تاریخ متنی از کاربر (مثال: 2026-10-25 08:00)
+  const startInputVal = document.getElementById("sh-start").value;
 
-  if (!guard_id || !post_id || !selectedStartTime || !repeat_count) return alert("همه فیلدها را پر کنید");
+  if (!guard_id || !post_id || !startInputVal || !repeat_count) return alert("همه فیلدها را پر کنید");
+
+  // تبدیل تاریخ متنی به تاریخ معتبر
+  const parsedDate = new Date(startInputVal.replace(" ", "T"));
+  if (isNaN(parsedDate.getTime())) {
+    return alert("فرمت تاریخ اشتباه است. لطفاً به این شکل وارد کنید: 2026-10-25 08:00");
+  }
 
   const btn = e.target.querySelector("button");
   setLoading(btn, true, "در حال تولید...");
@@ -259,7 +245,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     if (shift_type === "12-24") { workHours = 12; restHours = 24; }
     else if (shift_type === "12-12") { workHours = 12; restHours = 12; }
 
-    let currentStart = selectedStartTime;
+    let currentStart = parsedDate;
     let successCount = 0;
 
     for (let i = 0; i < repeat_count; i++) {
@@ -281,13 +267,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
 
     alert(`تعداد ${successCount} شیفت با موفقیت ثبت شد.`);
     document.getElementById("sh-repeat").value = "1";
-    selectedStartTime = null;
-    
-    if (typeof $ !== 'undefined' && $.fn.persianDatepicker) {
-      $("#sh-start").val("");
-    } else {
-      document.getElementById("sh-start").value = "";
-    }
+    document.getElementById("sh-start").value = "";
     
     await loadShifts();
   } catch(err) { 

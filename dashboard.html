@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>پنل مدیریت | نگهبان‌یار</title>
   
-  <!-- فایل‌های محلی تقویم شمسی -->
-  <link rel="stylesheet" href="libs/persian-datepicker.min.css" />
-  
   <style>
     * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
     body { margin:0; background:#0f172a; color:#e2e8f0; display:flex; flex-direction:column; min-height:100vh; }
@@ -25,8 +22,6 @@
     button.submit:hover { background:#2563eb; }
     .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
     .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
-    
-    .datepicker-plot-area { font-family: Tahoma, sans-serif !important; }
   </style>
 </head>
 <body>
@@ -83,7 +78,7 @@
       </div>
 
       <div class="card">
-        <h2>چینش خودکار شیفت‌ها (با تقویم شمسی)</h2>
+        <h2>چینش خودکار شیفت‌ها</h2>
         <form id="shift-form" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
           <select id="sh-guard" required></select>
           <select id="sh-post" required></select>
@@ -94,9 +89,9 @@
             <option value="12-12">الگوی ۱۲ ساعت کار - ۱۲ ساعت استراحت</option>
           </select>
 
-          <div>
-            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">تاریخ و ساعت شروع:</label>
-            <input type="text" id="sh-start" placeholder="کلیک کنید..." readonly style="margin-bottom:0; cursor:pointer; background:#1e293b;" />
+          <div style="grid-column: span 2;">
+            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">تاریخ و ساعت شروع (مثال: 2026-10-25 08:00):</label>
+            <input type="text" id="sh-start" placeholder="2026-10-25 08:00" required style="margin-bottom:0;" />
           </div>
           
           <div>
@@ -104,18 +99,14 @@
             <input type="number" id="sh-repeat" min="1" max="31" value="1" required style="margin-bottom:0;" />
           </div>
           
-          <button type="submit" class="submit" style="grid-column: span 2; margin-top:5px;">تولید خودکار شیفت‌ها</button>
+          <button type="submit" class="submit" style="grid-column: span 2; margin-top:5px; height: 42px;">تولید خودکار شیفت‌ها</button>
         </form>
         <div id="shift-list" class="list-container" style="margin-top: 15px;"></div>
       </div>
     </div>
   </main>
 
-  <!-- اسکریپت‌های محلی از پوشه libs -->
-  <script src="libs/jquery-3.6.0.min.js"></script>
-  <script src="libs/persian-date.min.js"></script>
-  <script src="libs/persian-datepicker.min.js"></script>
-  
+  <!-- بدون هیچ کتابخانه خارجی! -->
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
 </body>
