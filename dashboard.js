@@ -9,7 +9,7 @@ let selectedStartTime = null;
 // راه‌اندازی تقویم شمسی (با تاخیر اجرا می‌شود تا jQuery لود شود)
 function initDatepicker() {
   if (typeof $ === 'undefined' || !$.fn.persianDatepicker) {
-    console.error("کتابخانه تقویم لود نشده است.");
+    console.error("کتابخانه تقویم لود نشده است. بررسی کنید فایل‌های پوشه libs آپلود شده‌اند.");
     return;
   }
   
@@ -283,7 +283,6 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     document.getElementById("sh-repeat").value = "1";
     selectedStartTime = null;
     
-    // خالی کردن فیلد تقویم
     if (typeof $ !== 'undefined' && $.fn.persianDatepicker) {
       $("#sh-start").val("");
     } else {

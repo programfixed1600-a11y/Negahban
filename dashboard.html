@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>پنل مدیریت | نگهبان‌یار</title>
   
-  <!-- پلاگین تقویم شمسی (CDN جایگزین) -->
-  <link rel="stylesheet" href="https://cdn.jsdmirror.com/gh/Mds92/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css" />
+  <!-- فایل‌های محلی تقویم شمسی -->
+  <link rel="stylesheet" href="libs/persian-datepicker.min.css" />
   
   <style>
     * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
@@ -26,7 +26,6 @@
     .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
     .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
     
-    /* استایل تقویم شمسی */
     .datepicker-plot-area { font-family: Tahoma, sans-serif !important; }
   </style>
 </head>
@@ -97,8 +96,7 @@
 
           <div>
             <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">تاریخ و ساعت شروع:</label>
-            <!-- اینپوت برای تقویم شمسی -->
-            <input type="text" id="sh-start" placeholder="برای انتخاب کلیک کنید..." readonly style="margin-bottom:0; cursor:pointer; background:#1e293b;" />
+            <input type="text" id="sh-start" placeholder="کلیک کنید..." readonly style="margin-bottom:0; cursor:pointer; background:#1e293b;" />
           </div>
           
           <div>
@@ -113,10 +111,10 @@
     </div>
   </main>
 
-  <!-- اسکریپت‌های جایگزین (jsdmirror) -->
-  <script src="https://cdn.jsdmirror.com/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-  <script src="https://cdn.jsdmirror.com/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
-  <script src="https://cdn.jsdmirror.com/gh/Mds92/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+  <!-- اسکریپت‌های محلی از پوشه libs -->
+  <script src="libs/jquery-3.6.0.min.js"></script>
+  <script src="libs/persian-date.min.js"></script>
+  <script src="libs/persian-datepicker.min.js"></script>
   
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
