@@ -247,22 +247,20 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   if (isNaN(parsedDate.getTime())) return alert("فرمت تاریخ اشتباه است. مثال: 2026-10-25 08:00");
 
   const btn = e.target.querySelector("button");
-  setLoading(btn, true, "در حال چینش...");
+  setLoading(btn, true, "در حال چینش (کمی صبر کنید)...");
 
   try {
     let workHours = 24, restHours = 48;
     if (shift_type === "12-24") { workHours = 12; restHours = 24; }
     else if (shift_type === "12-12") { workHours = 12; restHours = 12; }
 
-    let guardsQueue = [g1, g2, g3]; // ترتیب نگهبان‌ها
+    let guardsQueue = [g1, g2, g3];
     let currentStart = parsedDate;
     let successCount = 0;
     
-    // ما یک ماه (یا تعداد روزهای خواسته شده) را شیفت‌بندی می‌کنیم
     const endDate = new Date(parsedDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
-      // نفر اول صف، شیفت را می‌گیرد
       const currentGuard = guardsQueue.shift(); 
       
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
@@ -278,12 +276,11 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       });
       
       successCount++;
-      
-      // نفر اول به انتهای صف می‌رود
       guardsQueue.push(currentGuard);
-      
-      // زمان شروع شیفت بعدی = پایان شیفت فعلی + زمان استراحت
       currentStart = new Date(currentEnd.getTime() + (restHours * 60 * 60 * 1000));
+
+      // این خط بسیار مهم است: ایجاد وقفه ۵۰۰ میلی‌ثانیه‌ای بین هر درخواست
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     alert(`تعداد ${successCount} شیفت برای این پست چیده شد.`);
