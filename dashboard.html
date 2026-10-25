@@ -84,29 +84,28 @@
       </div>
 
       <div class="card">
-        <h2>برنامه شیفت‌ها</h2>
+        <h2>برنامه شیفت‌ها (تولید خودکار)</h2>
         <form id="shift-form" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
           <select id="sh-guard" required></select>
           <select id="sh-post" required></select>
           
-          <!-- کادر انتخاب نوع شیفت -->
           <select id="sh-type" style="grid-column: span 2; margin-bottom:0;">
             <option value="24-48">الگوی ۲۴ ساعت کار - ۴۸ ساعت استراحت</option>
             <option value="12-24">الگوی ۱۲ ساعت کار - ۲۴ ساعت استراحت</option>
             <option value="12-12">الگوی ۱۲ ساعت کار - ۱۲ ساعت استراحت</option>
           </select>
 
-          <!-- کادرهای انتخاب تاریخ و ساعت -->
           <div>
-            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">زمان شروع:</label>
+            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">زمان شروع (اولین شیفت):</label>
             <input type="datetime-local" id="sh-start" required style="margin-bottom:0;" />
           </div>
+          
           <div>
-            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">زمان پایان:</label>
-            <input type="datetime-local" id="sh-end" required style="margin-bottom:0;" />
+            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">تعداد شیفت (تکرار):</label>
+            <input type="number" id="sh-repeat" min="1" max="30" value="1" required style="margin-bottom:0;" />
           </div>
           
-          <button type="submit" class="submit" style="grid-column: span 2; margin-top:5px;">ثبت شیفت جدید</button>
+          <button type="submit" class="submit" style="grid-column: span 2; margin-top:5px;">ثبت و تولید خودکار شیفت‌ها</button>
         </form>
         <div id="shift-list" class="list-container" style="margin-top: 15px;"></div>
       </div>
