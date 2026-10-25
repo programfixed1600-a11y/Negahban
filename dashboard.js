@@ -4,7 +4,6 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-// بررسی لاگین بودن
 function checkAuth() {
   const session = localStorage.getItem("fikaro_session");
   if (!session) return (window.location.href = "index.html");
@@ -18,7 +17,6 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
 
-// توابع ارتباط با دیتابیس فیکارو
 async function getTable(table) {
   const res = await fetch(`${BASE_URL}/${table}`, { headers });
   const data = await res.json();
@@ -76,7 +74,6 @@ async function loadAllData() {
   }
 }
 
-// --- رندر کردن بخش‌ها ---
 function renderCompanies() {
   const cList = document.getElementById("company-list");
   const cSelect = document.getElementById("s-company");
@@ -151,7 +148,6 @@ function renderShiftSelectors() {
   globalPosts.forEach(p => shiftPost.innerHTML += `<option value="${p.id}">${p.name}</option>`);
 }
 
-// --- ثبت فرم‌ها ---
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
@@ -204,7 +200,6 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- بخش شیفت‌ها ---
 async function loadShifts() {
   const shifts = await getTable("shifts") || [];
   const shList = document.getElementById("shift-list");
@@ -213,8 +208,6 @@ async function loadShifts() {
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
-    
-    // تبدیل تاریخ میلادی به فرمت قابل خواندن (حذف T)
     const start = s.start_time ? s.start_time.replace('T', ' ') : '';
     const end = s.end_time ? s.end_time.replace('T', ' ') : '';
     
@@ -243,7 +236,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
   try {
-    // فیلد shift_type فعلاً حذف شده تا خطای فیکارو رخ ندهد
+    // فقط همین ۴ فیلد را می‌فرستیم
     await insertTable("shifts", { guard_id, post_id, start_time, end_time });
     document.getElementById("sh-start").value = ""; 
     document.getElementById("sh-end").value = "";
