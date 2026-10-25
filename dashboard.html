@@ -10,7 +10,13 @@
     body { margin:0; background:#0f172a; color:#e2e8f0; display:flex; flex-direction:column; min-height:100vh; }
     header { background:#1e293b; padding:16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; }
     header h1 { margin:0; font-size:18px; }
-    header button { background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:inherit; }
+    header div { display:flex; gap:10px; }
+    header button { border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:inherit; font-weight:bold; }
+    .btn-logout { background:#ef4444; color:white; }
+    .btn-logout:hover { background:#dc2626; }
+    .btn-schedule { background:#10b981; color:white; }
+    .btn-schedule:hover { background:#059669; }
+    
     main { padding:16px; flex:1; max-width:1000px; margin:0 auto; width:100%; display: flex; flex-direction: column; gap: 20px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
     @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
@@ -27,13 +33,17 @@
 <body>
   <header>
     <h1>پنل مدیریت نگهبان‌یار</h1>
-    <button id="logout-btn">خروج</button>
+    <div>
+      <button class="btn-schedule" onclick="window.location.href='schedule.html'">مشاهده جدول شیفت‌ها</button>
+      <button class="btn-logout" id="logout-btn">خروج</button>
+    </div>
   </header>
   
   <main>
     <p style="font-size:13px; color:#94a3b8; margin:0;">کاربر: <span id="user-email"></span></p>
 
     <div class="grid">
+      <!-- ستون ۱: شرکت‌ها -->
       <div class="card">
         <h2>شرکت‌ها</h2>
         <form id="company-form">
@@ -44,6 +54,7 @@
         <div id="company-list" class="list-container"></div>
       </div>
 
+      <!-- ستون ۲: سایت‌ها -->
       <div class="card">
         <h2>سایت‌های نگهبانی</h2>
         <form id="site-form">
@@ -55,6 +66,7 @@
         <div id="site-list" class="list-container"></div>
       </div>
 
+      <!-- ستون ۳: نگهبان‌ها -->
       <div class="card">
         <h2>پرسنل (نگهبان)</h2>
         <form id="guard-form">
@@ -66,6 +78,7 @@
       </div>
     </div>
 
+    <!-- بخش پست‌ها و شیفت‌ها -->
     <div class="grid" style="grid-template-columns: 1fr 2fr;">
       <div class="card">
         <h2>پست‌های نگهبانی</h2>
