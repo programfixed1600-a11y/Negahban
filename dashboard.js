@@ -6,7 +6,7 @@ const BASE_URL = APP_CONFIG.API_URL;
 
 let selectedStartTime = null;
 
-// تابع راه‌اندازی تقویم (با تاخیر اجرا می‌شود تا jQuery لود شود)
+// راه‌اندازی تقویم شمسی (با تاخیر اجرا می‌شود تا jQuery لود شود)
 function initDatepicker() {
   if (typeof $ === 'undefined' || !$.fn.persianDatepicker) {
     console.error("کتابخانه تقویم لود نشده است.");
