@@ -12,18 +12,17 @@ function checkAuth() {
   loadAllData();
 }
 
-// خروج
 document.getElementById("logout-btn").addEventListener("click", () => {
   localStorage.removeItem("fikaro_session");
   localStorage.removeItem("user_email");
   window.location.href = "index.html";
 });
 
-// توابع کمکی برای ارتباط با دیتابیس
+// توابع ارتباط با دیتابیس فیکارو
 async function getTable(table) {
   const res = await fetch(`${BASE_URL}/${table}`, { headers });
   const data = await res.json();
-  return data.data || data; // بسته به ساختار خروجی فیکارو
+  return data.data || data;
 }
 
 async function insertTable(table, payload) {
@@ -31,21 +30,19 @@ async function insertTable(table, payload) {
     method: "POST", headers, body: JSON.stringify(payload)
   });
   const data = await res.json();
-  if (!res.ok) {
-    // این خط اضافه شد تا دقیقاً بگوید فیکارو چه چیزی را کم دارد
-    throw new Error(data.message || data.error || JSON.stringify(data)); 
-  }
+  if (!res.ok) throw new Error(data.detail || data.message || "خطا در ذخیره");
   return data;
 }
 
 async function deleteTable(table, id) {
   const res = await fetch(`${BASE_URL}/${table}/${id}`, { method: "DELETE", headers });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "خطا در حذف");
-  return data;
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.detail || "خطا در حذف");
+  }
+  return true;
 }
 
-// تغییر وضعیت دکمه‌ها
 function setLoading(btn, isLoading, text = "در حال ذخیره...") {
   if (isLoading) {
     btn.dataset.oldText = btn.textContent;
@@ -59,62 +56,102 @@ function setLoading(btn, isLoading, text = "در حال ذخیره...") {
   }
 }
 
-// بارگذاری همه داده‌ها
+let globalCompanies = [], globalSites = [], globalGuards = [], globalPosts = [];
+
 async function loadAllData() {
   try {
-    await loadCompaniesAndSites();
-    await loadGuards();
-    await loadPosts();
+    globalCompanies = await getTable("companies") || [];
+    globalSites = await getTable("sites") || [];
+    globalGuards = await getTable("guards") || [];
+    globalPosts = await getTable("posts") || [];
+
+    renderCompanies();
+    renderSites();
+    renderGuards();
+    renderPosts();
+    renderShiftSelectors();
+    await loadShifts();
   } catch (err) {
     console.error(err);
   }
 }
 
-// --- بخش شرکت‌ها و سایت‌ها ---
-async function loadCompaniesAndSites() {
-  const companies = await getTable("companies");
+// --- رندر کردن بخش‌ها ---
+function renderCompanies() {
   const cList = document.getElementById("company-list");
   const cSelect = document.getElementById("s-company");
-  
   cList.innerHTML = ""; cSelect.innerHTML = "<option value=''>انتخاب شرکت...</option>";
   
-  if (companies && Array.isArray(companies)) {
-    companies.forEach(c => {
-      cList.innerHTML += `
-        <div class="item">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>
-            <button onclick="deleteItem('companies', '${c.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
-          </div>
-        </div>`;
-      cSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-    });
-  }
-
-  const sites = await getTable("sites");
-  const sList = document.getElementById("site-list");
-  const pSiteSelect = document.getElementById("p-site");
-  
-  sList.innerHTML = ""; pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>";
-  
-  if (sites && Array.isArray(sites)) {
-    sites.forEach(s => {
-      // پیدا کردن نام شرکت مربوطه
-      const comp = companies.find(c => c.id === s.company_id);
-      const compName = comp ? comp.name : '';
-      
-      sList.innerHTML += `
-        <div class="item">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><strong>${s.name}</strong><br><small>${compName}</small></div>
-            <button onclick="deleteItem('sites', '${s.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
-          </div>
-        </div>`;
-      pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${compName})</option>`;
-    });
-  }
+  globalCompanies.forEach(c => {
+    cList.innerHTML += `
+      <div class="item">
+        <div style="display:flex; justify-content:space-between;">
+          <div><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>
+          <button onclick="deleteItem('companies', '${c.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+        </div>
+      </div>`;
+    cSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+  });
 }
 
+function renderSites() {
+  const sList = document.getElementById("site-list");
+  const pSiteSelect = document.getElementById("p-site");
+  sList.innerHTML = ""; pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>";
+  
+  globalSites.forEach(s => {
+    const comp = globalCompanies.find(c => c.id === s.company_id);
+    const compName = comp ? comp.name : '';
+    sList.innerHTML += `
+      <div class="item">
+        <div style="display:flex; justify-content:space-between;">
+          <div><strong>${s.name}</strong><br><small>${compName}</small></div>
+          <button onclick="deleteItem('sites', '${s.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+        </div>
+      </div>`;
+    pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${compName})</option>`;
+  });
+}
+
+function renderGuards() {
+  const gList = document.getElementById("guard-list");
+  gList.innerHTML = "";
+  globalGuards.forEach(g => {
+    gList.innerHTML += `
+      <div class="item">
+        <div style="display:flex; justify-content:space-between;">
+          <div><strong>${g.full_name}</strong><br><small>${g.phone || ''}</small></div>
+          <button onclick="deleteItem('guards', '${g.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+        </div>
+      </div>`;
+  });
+}
+
+function renderPosts() {
+  const pList = document.getElementById("post-list");
+  pList.innerHTML = "";
+  globalPosts.forEach(p => {
+    pList.innerHTML += `
+      <div class="item">
+        <div style="display:flex; justify-content:space-between;">
+          <div><strong>${p.name}</strong></div>
+          <button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+        </div>
+      </div>`;
+  });
+}
+
+function renderShiftSelectors() {
+  const shiftGuard = document.getElementById("sh-guard");
+  const shiftPost = document.getElementById("sh-post");
+  shiftGuard.innerHTML = "<option value=''>انتخاب نگهبان...</option>";
+  shiftPost.innerHTML = "<option value=''>انتخاب پست...</option>";
+
+  globalGuards.forEach(g => shiftGuard.innerHTML += `<option value="${g.id}">${g.full_name}</option>`);
+  globalPosts.forEach(p => shiftPost.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+}
+
+// --- ثبت فرم‌ها ---
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
@@ -141,24 +178,6 @@ document.getElementById("site-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن سایت");
 });
 
-// --- بخش نگهبان‌ها ---
-async function loadGuards() {
-  const guards = await getTable("guards");
-  const gList = document.getElementById("guard-list");
-  gList.innerHTML = "";
-  if (guards && Array.isArray(guards)) {
-    guards.forEach(g => {
-      gList.innerHTML += `
-        <div class="item">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><strong>${g.full_name}</strong><br><small>${g.phone || 'بدون شماره'}</small></div>
-            <button onclick="deleteItem('guards', '${g.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
-          </div>
-        </div>`;
-    });
-  }
-}
-
 document.getElementById("guard-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
@@ -171,56 +190,78 @@ document.getElementById("guard-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن نگهبان");
 });
 
-// --- بخش پست‌ها ---
-async function loadPosts() {
-  const posts = await getTable("posts");
-  const pList = document.getElementById("post-list");
-  pList.innerHTML = "";
-  if (posts && Array.isArray(posts)) {
-    posts.forEach(p => {
-      pList.innerHTML += `
-        <div class="item">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><strong>${p.name}</strong></div>
-            <button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-family:inherit;">حذف</button>
-          </div>
-        </div>`;
-    });
-  }
-}
-
 document.getElementById("post-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const site_id = document.getElementById("p-site").value;
-  const p_name = document.getElementById("p-name").value;
-  
-  if (!site_id) return alert("لطفاً ابتدا یک سایت انتخاب کنید.");
-  if (!p_name) return alert("لطفاً نام پست را وارد کنید.");
-
+  if (!site_id) return alert("سایت را انتخاب کنید");
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
-
   try {
-    await insertTable("posts", { site_id, name: p_name });
+    await insertTable("posts", { site_id, name: document.getElementById("p-name").value });
     document.getElementById("p-name").value = "";
     await loadAllData();
   } catch(err) { alert(err.message); }
-  
   setLoading(btn, false, "افزودن پست");
 });
 
+// --- بخش شیفت‌ها ---
+async function loadShifts() {
+  const shifts = await getTable("shifts") || [];
+  const shList = document.getElementById("shift-list");
+  shList.innerHTML = "";
+  
+  shifts.forEach(s => {
+    const g = globalGuards.find(x => x.id === s.guard_id);
+    const p = globalPosts.find(x => x.id === s.post_id);
+    
+    // تبدیل تاریخ میلادی به فرمت قابل خواندن (حذف T)
+    const start = s.start_time ? s.start_time.replace('T', ' ') : '';
+    const end = s.end_time ? s.end_time.replace('T', ' ') : '';
+    
+    shList.innerHTML += `
+      <div class="item" style="border-right: 4px solid #3b82f6;">
+        <div style="display:flex; justify-content:space-between;">
+          <div>
+            <strong>${g ? g.full_name : 'نامشخص'}</strong> در ${p ? p.name : 'نامشخص'}<br>
+            <small style="color:#94a3b8">نوع: ${s.shift_type || 'نامشخص'} | از: ${start} تا: ${end}</small>
+          </div>
+          <button onclick="deleteItem('shifts', '${s.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+        </div>
+      </div>`;
+  });
+}
+
+document.getElementById("shift-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const guard_id = document.getElementById("sh-guard").value;
+  const post_id = document.getElementById("sh-post").value;
+  const shift_type = document.getElementById("sh-type").value;
+  const start_time = document.getElementById("sh-start").value;
+  const end_time = document.getElementById("sh-end").value;
+
+  if (!guard_id || !post_id || !start_time || !end_time) return alert("همه فیلدها را پر کنید");
+
+  const btn = e.target.querySelector("button");
+  setLoading(btn, true);
+  try {
+    await insertTable("shifts", { guard_id, post_id, shift_type, start_time, end_time });
+    document.getElementById("sh-start").value = ""; 
+    document.getElementById("sh-end").value = "";
+    await loadShifts();
+  } catch(err) { alert(err.message); }
+  setLoading(btn, false, "ثبت شیفت");
+});
+
 window.deleteItem = async function(table, id, btnElement) {
-  if (!confirm("آیا از حذف این مورد مطمئن هستید؟")) return;
-  const oldText = btnElement.textContent;
+  if (!confirm("مطمئن هستید؟")) return;
   btnElement.textContent = "...";
   btnElement.disabled = true;
-
   try {
     await deleteTable(table, id);
     await loadAllData();
   } catch(err) {
     alert(err.message);
-    btnElement.textContent = oldText;
+    btnElement.textContent = "حذف";
     btnElement.disabled = false;
   }
 }

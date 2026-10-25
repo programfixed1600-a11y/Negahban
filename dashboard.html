@@ -20,23 +20,13 @@
     h2 { font-size:15px; margin-top:0; color:#94a3b8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
     input, select { width:100%; padding:10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; margin-bottom:10px; font-family:inherit; font-size: 13px; }
     input:focus, select:focus { outline:none; border-color:#3b82f6; }
-    button.submit { width:100%; padding:10px; border-radius:8px; border:none; background:#3b82f6; color:white; font-weight:bold; cursor:pointer; font-family:inherit; font-size: 14px; transition: all 0.2s; }
+    button.submit { width:100%; padding:10px; border-radius:8px; border:none; background:#3b82f6; color:white; font-weight:bold; cursor:pointer; font-family:inherit; font-size: 14px; }
     button.submit:hover { background:#2563eb; }
     .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
     .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
-    
-    /* انیمیشن لودینگ */
-    .loader-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(15, 23, 42, 0.5); display:none; align-items:center; justify-content:center; z-index:100; backdrop-filter: blur(2px); }
-    .spinner { width: 40px; height: 40px; border: 4px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <!-- نشانگر لودینگ عمومی -->
-  <div class="loader-overlay" id="global-loader">
-    <div class="spinner"></div>
-  </div>
-
   <header>
     <h1>پنل مدیریت نگهبان‌یار</h1>
     <button id="logout-btn">خروج</button>
@@ -46,6 +36,7 @@
     <p style="font-size:13px; color:#94a3b8; margin:0;">کاربر: <span id="user-email"></span></p>
 
     <div class="grid">
+      <!-- ستون ۱: شرکت‌ها -->
       <div class="card">
         <h2>شرکت‌ها</h2>
         <form id="company-form">
@@ -56,6 +47,7 @@
         <div id="company-list" class="list-container"></div>
       </div>
 
+      <!-- ستون ۲: سایت‌ها -->
       <div class="card">
         <h2>سایت‌های نگهبانی</h2>
         <form id="site-form">
@@ -67,6 +59,7 @@
         <div id="site-list" class="list-container"></div>
       </div>
 
+      <!-- ستون ۳: نگهبان‌ها -->
       <div class="card">
         <h2>پرسنل (نگهبان)</h2>
         <form id="guard-form">
@@ -78,18 +71,48 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>پست‌های نگهبانی</h2>
-      <form id="post-form" style="display:flex; gap:10px; align-items:center;">
-        <select id="p-site" required style="flex:2; margin:0;"></select>
-        <input type="text" id="p-name" placeholder="نام پست" required style="flex:2; margin:0;" />
-        <button type="submit" class="submit" style="flex:1; height: 40px;">افزودن پست</button>
-      </form>
-      <div id="post-list" class="list-container" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top: 15px;"></div>
+    <!-- بخش پست‌ها و شیفت‌ها -->
+    <div class="grid" style="grid-template-columns: 1fr 2fr;">
+      <div class="card">
+        <h2>پست‌های نگهبانی</h2>
+        <form id="post-form" style="display:flex; gap:10px;">
+          <select id="p-site" required style="flex:2; margin:0;"></select>
+          <input type="text" id="p-name" placeholder="نام پست" required style="flex:2; margin:0;" />
+          <button type="submit" class="submit" style="flex:1; height: 40px;">افزودن</button>
+        </form>
+        <div id="post-list" class="list-container" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top: 15px;"></div>
+      </div>
+
+      <div class="card">
+        <h2>برنامه شیفت‌ها</h2>
+        <form id="shift-form" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+          <select id="sh-guard" required></select>
+          <select id="sh-post" required></select>
+          
+          <!-- کادر انتخاب نوع شیفت -->
+          <select id="sh-type" style="grid-column: span 2; margin-bottom:0;">
+            <option value="24-48">الگوی ۲۴ ساعت کار - ۴۸ ساعت استراحت</option>
+            <option value="12-24">الگوی ۱۲ ساعت کار - ۲۴ ساعت استراحت</option>
+            <option value="12-12">الگوی ۱۲ ساعت کار - ۱۲ ساعت استراحت</option>
+          </select>
+
+          <!-- کادرهای انتخاب تاریخ و ساعت -->
+          <div>
+            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">زمان شروع:</label>
+            <input type="datetime-local" id="sh-start" required style="margin-bottom:0;" />
+          </div>
+          <div>
+            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">زمان پایان:</label>
+            <input type="datetime-local" id="sh-end" required style="margin-bottom:0;" />
+          </div>
+          
+          <button type="submit" class="submit" style="grid-column: span 2; margin-top:5px;">ثبت شیفت جدید</button>
+        </form>
+        <div id="shift-list" class="list-container" style="margin-top: 15px;"></div>
+      </div>
     </div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
 </body>
