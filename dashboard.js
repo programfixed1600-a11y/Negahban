@@ -6,8 +6,13 @@ const BASE_URL = APP_CONFIG.API_URL;
 
 let selectedStartTime = null;
 
-// راه‌اندازی تقویم شمسی
-$(document).ready(function() {
+// تابع راه‌اندازی تقویم (با تاخیر اجرا می‌شود تا jQuery لود شود)
+function initDatepicker() {
+  if (typeof $ === 'undefined' || !$.fn.persianDatepicker) {
+    console.error("کتابخانه تقویم لود نشده است.");
+    return;
+  }
+  
   $("#sh-start").persianDatepicker({
     format: 'YYYY/MM/DD HH:mm',
     timePicker: { enabled: true },
@@ -17,13 +22,17 @@ $(document).ready(function() {
       selectedStartTime = new persianDate(unix).toDate();
     }
   });
-});
+}
 
+// بررسی لاگین
 function checkAuth() {
   const session = localStorage.getItem("fikaro_session");
   if (!session) return (window.location.href = "index.html");
   document.getElementById("user-email").textContent = localStorage.getItem("user_email") || "مدیر";
+  
   loadAllData();
+  // راه‌اندازی تقویم بعد از بارگذاری اولیه
+  initDatepicker();
 }
 
 document.getElementById("logout-btn").addEventListener("click", () => {
@@ -208,7 +217,7 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- بخش شیفت‌ها (با استفاده از فیلدهای موجود در جدول at) ---
+// --- بخش شیفت‌ها (استفاده از جدول at) ---
 async function loadShifts() {
   const shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
@@ -218,7 +227,6 @@ async function loadShifts() {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
     
-    // ما زمان شروع را در فیلد check_in ذخیره کردیم
     const start = s.check_in ? s.check_in.replace('T', ' ') : 'نامشخص';
     
     shList.innerHTML += `
@@ -255,13 +263,11 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     let successCount = 0;
 
     for (let i = 0; i < repeat_count; i++) {
-      // زمان پایان را فقط برای محاسبه شیفت بعدی در جاوا اسکریپت استفاده می‌کنیم
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
       const startStr = currentStart.toISOString().slice(0, 16);
       const endStr = currentEnd.toISOString().slice(0, 16);
 
-      // چون فیلد start_time نداریم، زمان شروع را در check_in و زمان پایان را در check_out می‌ریزیم
       await insertTable("at", { 
         guard_id, 
         post_id, 
@@ -276,7 +282,13 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     alert(`تعداد ${successCount} شیفت با موفقیت ثبت شد.`);
     document.getElementById("sh-repeat").value = "1";
     selectedStartTime = null;
-    $("#sh-start").val("");
+    
+    // خالی کردن فیلد تقویم
+    if (typeof $ !== 'undefined' && $.fn.persianDatepicker) {
+      $("#sh-start").val("");
+    } else {
+      document.getElementById("sh-start").value = "";
+    }
     
     await loadShifts();
   } catch(err) { 
