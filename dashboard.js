@@ -31,7 +31,10 @@ async function insertTable(table, payload) {
     method: "POST", headers, body: JSON.stringify(payload)
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "خطا در ذخیره");
+  if (!res.ok) {
+    // این خط اضافه شد تا دقیقاً بگوید فیکارو چه چیزی را کم دارد
+    throw new Error(data.message || data.error || JSON.stringify(data)); 
+  }
   return data;
 }
 
