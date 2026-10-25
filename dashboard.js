@@ -4,7 +4,6 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-// بررسی لاگین
 function checkAuth() {
   const session = localStorage.getItem("fikaro_session");
   if (!session) return (window.location.href = "index.html");
@@ -122,10 +121,13 @@ function renderPosts() {
   const pList = document.getElementById("post-list");
   pList.innerHTML = "";
   globalPosts.forEach(p => {
+    // پیدا کردن نام سایت برای نمایش بهتر
+    const site = globalSites.find(s => s.id === p.site_id);
+    const siteName = site ? site.name : '';
     pList.innerHTML += `
       <div class="item">
         <div style="display:flex; justify-content:space-between;">
-          <div><strong>${p.name}</strong></div>
+          <div><strong>${p.name}</strong><br><small>سایت: ${siteName}</small></div>
           <button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
         </div>
       </div>`;
@@ -134,16 +136,25 @@ function renderPosts() {
 
 function renderShiftSelectors() {
   const shiftPost = document.getElementById("sh-post");
+  const filterPost = document.getElementById("filter-shift-post");
   const g1 = document.getElementById("sh-guard1");
   const g2 = document.getElementById("sh-guard2");
   const g3 = document.getElementById("sh-guard3");
   
   shiftPost.innerHTML = "<option value=''>انتخاب پست...</option>";
+  filterPost.innerHTML = "<option value=''>همه پست‌ها</option>";
   g1.innerHTML = "<option value=''>نگهبان ۱...</option>";
   g2.innerHTML = "<option value=''>نگهبان ۲...</option>";
   g3.innerHTML = "<option value=''>نگهبان ۳...</option>";
 
-  globalPosts.forEach(p => shiftPost.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+  globalPosts.forEach(p => {
+    const site = globalSites.find(s => s.id === p.site_id);
+    const siteName = site ? site.name : 'بدون سایت';
+    const opt = `<option value="${p.id}">${p.name} - ${siteName}</option>`;
+    
+    shiftPost.innerHTML += opt;
+    filterPost.innerHTML += opt;
+  });
   
   globalGuards.forEach(g => {
     const opt = `<option value="${g.id}">${g.full_name}</option>`;
@@ -153,6 +164,7 @@ function renderShiftSelectors() {
   });
 }
 
+// --- ثبت فرم‌ها ---
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
@@ -205,12 +217,24 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- بخش شیفت‌ها (استفاده از جدول at) ---
+// --- بخش شیفت‌ها ---
 async function loadShifts() {
-  const shifts = await getTable("at") || [];
+  let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
+  const filterVal = document.getElementById("filter-shift-post").value;
+  
+  // فیلتر کردن لیست شیفت‌ها
+  if (filterVal) {
+    shifts = shifts.filter(s => s.post_id === filterVal);
+  }
+
   shList.innerHTML = "";
   
+  if (shifts.length === 0) {
+    shList.innerHTML = "<p style='color:#94a3b8; text-align:center;'>هیچ شیفتی ثبت نشده یا با فیلتر فعلی همخوانی ندارد.</p>";
+    return;
+  }
+
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
@@ -219,17 +243,18 @@ async function loadShifts() {
     
     shList.innerHTML += `
       <div class="item" style="border-right: 4px solid #3b82f6;">
-        <div style="display:flex; justify-content:space-between;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <strong>${g ? g.full_name : 'نامشخص'}</strong> در ${p ? p.name : 'نامشخص'}<br>
+            <strong>${g ? g.full_name : 'نامشخص'}</strong> در <strong>${p ? p.name : 'نامشخص'}</strong><br>
             <small style="color:#94a3b8">زمان شروع: ${start}</small>
           </div>
-          <button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+          <button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">حذف</button>
         </div>
       </div>`;
   });
 }
 
+// ثبت و تولید خودکار با منطق صحیح (شیفت‌ها پشت سر هم)
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const post_id = document.getElementById("sh-post").value;
@@ -247,12 +272,11 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   if (isNaN(parsedDate.getTime())) return alert("فرمت تاریخ اشتباه است. مثال: 2026-10-25 08:00");
 
   const btn = e.target.querySelector("button");
-  setLoading(btn, true, "در حال چینش (کمی صبر کنید)...");
+  setLoading(btn, true, "در حال چینش...");
 
   try {
-    let workHours = 24, restHours = 48;
-    if (shift_type === "12-24") { workHours = 12; restHours = 24; }
-    else if (shift_type === "12-12") { workHours = 12; restHours = 12; }
+    let workHours = 24;
+    if (shift_type === "12-24" || shift_type === "12-12") { workHours = 12; }
 
     let guardsQueue = [g1, g2, g3];
     let currentStart = parsedDate;
@@ -261,8 +285,10 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     const endDate = new Date(parsedDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
+      // گرفتن نفر بعدی از صف چرخش
       const currentGuard = guardsQueue.shift(); 
       
+      // پایان شیفت این نفر (شروع + ساعت کاری)
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
       const startStr = currentStart.toISOString().slice(0, 16);
@@ -277,9 +303,10 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       
       successCount++;
       guardsQueue.push(currentGuard);
-      currentStart = new Date(currentEnd.getTime() + (restHours * 60 * 60 * 1000));
+      
+      // نکته کلیدی: شیفت بعدی دقیقاً وقتی شروع می‌شود که شیفت فعلی تمام شده
+      currentStart = currentEnd;
 
-      // این خط بسیار مهم است: ایجاد وقفه ۵۰۰ میلی‌ثانیه‌ای بین هر درخواست
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
@@ -291,7 +318,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     alert("خطا در ثبت شیفت: " + err.message); 
   }
   
-  setLoading(btn, false, "تولید خودکار جدول یک‌ماهه");
+  setLoading(btn, false, "تولید خودکار جدول");
 });
 
 window.deleteItem = async function(table, id, btnElement) {

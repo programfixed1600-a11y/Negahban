@@ -10,13 +10,15 @@ async function getTable(table) {
   return data.data || data;
 }
 
-// بارگذاری اولیه منوی کشویی پست‌ها
 async function initFilters() {
   const posts = await getTable("posts") || [];
+  const sites = await getTable("sites") || [];
   const filterSelect = document.getElementById("filter-post");
   
   posts.forEach(p => {
-    filterSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+    const site = sites.find(s => s.id === p.site_id);
+    const siteName = site ? site.name : '';
+    filterSelect.innerHTML += `<option value="${p.id}">${p.name} (${siteName})</option>`;
   });
 }
 
@@ -29,7 +31,6 @@ async function loadSchedule() {
     const guards = await getTable("guards") || [];
     const posts = await getTable("posts") || [];
 
-    // فیلتر کردن شیفت‌ها بر اساس پست انتخاب شده
     if (selectedPostId) {
       shifts = shifts.filter(s => s.post_id === selectedPostId);
     }
@@ -39,7 +40,6 @@ async function loadSchedule() {
       return;
     }
 
-    // مرتب‌سازی بر اساس زمان شروع
     shifts.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
 
     const uniqueGuardIds = [...new Set(shifts.map(s => s.guard_id))];
@@ -98,7 +98,6 @@ async function loadSchedule() {
   }
 }
 
-// اجرای اولیه
 async function initPage() {
   await initFilters();
   await loadSchedule();
