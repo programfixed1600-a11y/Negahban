@@ -133,13 +133,24 @@ function renderPosts() {
 }
 
 function renderShiftSelectors() {
-  const shiftGuard = document.getElementById("sh-guard");
   const shiftPost = document.getElementById("sh-post");
-  shiftGuard.innerHTML = "<option value=''>انتخاب نگهبان...</option>";
+  const g1 = document.getElementById("sh-guard1");
+  const g2 = document.getElementById("sh-guard2");
+  const g3 = document.getElementById("sh-guard3");
+  
   shiftPost.innerHTML = "<option value=''>انتخاب پست...</option>";
+  g1.innerHTML = "<option value=''>نگهبان ۱...</option>";
+  g2.innerHTML = "<option value=''>نگهبان ۲...</option>";
+  g3.innerHTML = "<option value=''>نگهبان ۳...</option>";
 
-  globalGuards.forEach(g => shiftGuard.innerHTML += `<option value="${g.id}">${g.full_name}</option>`);
   globalPosts.forEach(p => shiftPost.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+  
+  globalGuards.forEach(g => {
+    const opt = `<option value="${g.id}">${g.full_name}</option>`;
+    g1.innerHTML += opt;
+    g2.innerHTML += opt;
+    g3.innerHTML += opt;
+  });
 }
 
 document.getElementById("company-form").addEventListener("submit", async (e) => {
@@ -221,52 +232,61 @@ async function loadShifts() {
 
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const guard_id = document.getElementById("sh-guard").value;
   const post_id = document.getElementById("sh-post").value;
   const shift_type = document.getElementById("sh-type").value;
-  const repeat_count = parseInt(document.getElementById("sh-repeat").value);
-  
-  // گرفتن تاریخ متنی از کاربر (مثال: 2026-10-25 08:00)
+  const g1 = document.getElementById("sh-guard1").value;
+  const g2 = document.getElementById("sh-guard2").value;
+  const g3 = document.getElementById("sh-guard3").value;
   const startInputVal = document.getElementById("sh-start").value;
+  const totalDays = parseInt(document.getElementById("sh-days").value);
 
-  if (!guard_id || !post_id || !startInputVal || !repeat_count) return alert("همه فیلدها را پر کنید");
+  if (!post_id || !g1 || !g2 || !g3 || !startInputVal || !totalDays) return alert("همه فیلدها را پر کنید");
+  if (new Set([g1, g2, g3]).size !== 3) return alert("لطفاً ۳ نگهبان متفاوت انتخاب کنید.");
 
-  // تبدیل تاریخ متنی به تاریخ معتبر
   const parsedDate = new Date(startInputVal.replace(" ", "T"));
-  if (isNaN(parsedDate.getTime())) {
-    return alert("فرمت تاریخ اشتباه است. لطفاً به این شکل وارد کنید: 2026-10-25 08:00");
-  }
+  if (isNaN(parsedDate.getTime())) return alert("فرمت تاریخ اشتباه است. مثال: 2026-10-25 08:00");
 
   const btn = e.target.querySelector("button");
-  setLoading(btn, true, "در حال تولید...");
+  setLoading(btn, true, "در حال چینش...");
 
   try {
     let workHours = 24, restHours = 48;
     if (shift_type === "12-24") { workHours = 12; restHours = 24; }
     else if (shift_type === "12-12") { workHours = 12; restHours = 12; }
 
+    let guardsQueue = [g1, g2, g3]; // ترتیب نگهبان‌ها
     let currentStart = parsedDate;
     let successCount = 0;
+    
+    // ما یک ماه (یا تعداد روزهای خواسته شده) را شیفت‌بندی می‌کنیم
+    const endDate = new Date(parsedDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
-    for (let i = 0; i < repeat_count; i++) {
+    while (currentStart < endDate) {
+      // نفر اول صف، شیفت را می‌گیرد
+      const currentGuard = guardsQueue.shift(); 
+      
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
       const startStr = currentStart.toISOString().slice(0, 16);
       const endStr = currentEnd.toISOString().slice(0, 16);
 
       await insertTable("at", { 
-        guard_id, 
+        guard_id: currentGuard, 
         post_id, 
         check_in: startStr,
         check_out: endStr
       });
       
       successCount++;
+      
+      // نفر اول به انتهای صف می‌رود
+      guardsQueue.push(currentGuard);
+      
+      // زمان شروع شیفت بعدی = پایان شیفت فعلی + زمان استراحت
       currentStart = new Date(currentEnd.getTime() + (restHours * 60 * 60 * 1000));
     }
 
-    alert(`تعداد ${successCount} شیفت با موفقیت ثبت شد.`);
-    document.getElementById("sh-repeat").value = "1";
+    alert(`تعداد ${successCount} شیفت برای این پست چیده شد.`);
     document.getElementById("sh-start").value = "";
     
     await loadShifts();
@@ -274,7 +294,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     alert("خطا در ثبت شیفت: " + err.message); 
   }
   
-  setLoading(btn, false, "تولید خودکار شیفت‌ها");
+  setLoading(btn, false, "تولید خودکار جدول یک‌ماهه");
 });
 
 window.deleteItem = async function(table, id, btnElement) {

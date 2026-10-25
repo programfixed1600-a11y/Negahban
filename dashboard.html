@@ -78,35 +78,42 @@
       </div>
 
       <div class="card">
-        <h2>چینش خودکار شیفت‌ها</h2>
-        <form id="shift-form" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-          <select id="sh-guard" required></select>
-          <select id="sh-post" required></select>
+        <h2>چینش خودکار شیفت‌ها (گردش ۳ نفره)</h2>
+        <form id="shift-form" style="display:flex; flex-direction:column; gap:10px;">
           
-          <select id="sh-type" style="grid-column: span 2; margin-bottom:0;">
-            <option value="24-48">الگوی ۲۴ ساعت کار - ۴۸ ساعت استراحت</option>
-            <option value="12-24">الگوی ۱۲ ساعت کار - ۲۴ ساعت استراحت</option>
-            <option value="12-12">الگوی ۱۲ ساعت کار - ۱۲ ساعت استراحت</option>
-          </select>
+          <div style="display:flex; gap:10px;">
+            <select id="sh-post" required style="flex:1;"></select>
+            <select id="sh-type" required style="flex:1;">
+              <option value="24-48">الگوی ۲۴-۴۸</option>
+              <option value="12-24">الگوی ۱۲-۲۴</option>
+              <option value="12-12">الگوی ۱۲-۱۲</option>
+            </select>
+          </div>
 
-          <div style="grid-column: span 2;">
-            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">تاریخ و ساعت شروع (مثال: 2026-10-25 08:00):</label>
-            <input type="text" id="sh-start" placeholder="2026-10-25 08:00" required style="margin-bottom:0;" />
+          <div style="display:flex; gap:10px;">
+            <select id="sh-guard1" required style="flex:1;"><option value="">نگهبان ۱...</option></select>
+            <select id="sh-guard2" required style="flex:1;"><option value="">نگهبان ۲...</option></select>
+            <select id="sh-guard3" required style="flex:1;"><option value="">نگهبان ۳...</option></select>
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">تاریخ و ساعت شروع (مثال: 2026-10-25 08:00):</label>
+              <input type="text" id="sh-start" placeholder="2026-10-25 08:00" required style="margin-bottom:0;" />
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">تعداد روز (مثلاً ۳۰):</label>
+              <input type="number" id="sh-days" min="1" max="31" value="30" required style="margin-bottom:0;" />
+            </div>
           </div>
           
-          <div>
-            <label style="font-size:11px; color:#94a3b8; margin-bottom:4px; display:block;">تعداد شیفت:</label>
-            <input type="number" id="sh-repeat" min="1" max="31" value="1" required style="margin-bottom:0;" />
-          </div>
-          
-          <button type="submit" class="submit" style="grid-column: span 2; margin-top:5px; height: 42px;">تولید خودکار شیفت‌ها</button>
+          <button type="submit" class="submit" style="height: 42px;">تولید خودکار جدول یک‌ماهه</button>
         </form>
         <div id="shift-list" class="list-container" style="margin-top: 15px;"></div>
       </div>
     </div>
   </main>
 
-  <!-- بدون هیچ کتابخانه خارجی! -->
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
 </body>
