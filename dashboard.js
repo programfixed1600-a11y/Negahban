@@ -4,7 +4,21 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-// بررسی لاگین بودن
+let selectedStartTime = null;
+
+// راه‌اندازی تقویم شمسی
+$(document).ready(function() {
+  $("#sh-start").persianDatepicker({
+    format: 'YYYY/MM/DD HH:mm',
+    timePicker: { enabled: true },
+    initialValue: false,
+    autoClose: true,
+    onSelect: function(unix) {
+      selectedStartTime = new persianDate(unix).toDate();
+    }
+  });
+});
+
 function checkAuth() {
   const session = localStorage.getItem("fikaro_session");
   if (!session) return (window.location.href = "index.html");
@@ -18,7 +32,6 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
 
-// توابع ارتباط با دیتابیس فیکارو
 async function getTable(table) {
   const res = await fetch(`${BASE_URL}/${table}`, { headers });
   const data = await res.json();
@@ -36,10 +49,7 @@ async function insertTable(table, payload) {
 
 async function deleteTable(table, id) {
   const res = await fetch(`${BASE_URL}/${table}/${id}`, { method: "DELETE", headers });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.detail || "خطا در حذف");
-  }
+  if (!res.ok) throw new Error("خطا در حذف");
   return true;
 }
 
@@ -48,11 +58,9 @@ function setLoading(btn, isLoading, text = "در حال ذخیره...") {
     btn.dataset.oldText = btn.textContent;
     btn.textContent = text;
     btn.disabled = true;
-    btn.style.opacity = "0.7";
   } else {
     btn.textContent = btn.dataset.oldText || text;
     btn.disabled = false;
-    btn.style.opacity = "1";
   }
 }
 
@@ -71,12 +79,9 @@ async function loadAllData() {
     renderPosts();
     renderShiftSelectors();
     await loadShifts();
-  } catch (err) {
-    console.error(err);
-  }
+  } catch (err) { console.error(err); }
 }
 
-// --- رندر کردن بخش‌ها ---
 function renderCompanies() {
   const cList = document.getElementById("company-list");
   const cSelect = document.getElementById("s-company");
@@ -87,7 +92,7 @@ function renderCompanies() {
       <div class="item">
         <div style="display:flex; justify-content:space-between;">
           <div><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>
-          <button onclick="deleteItem('companies', '${c.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+          <button onclick="deleteItem('companies', '${c.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
         </div>
       </div>`;
     cSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
@@ -106,7 +111,7 @@ function renderSites() {
       <div class="item">
         <div style="display:flex; justify-content:space-between;">
           <div><strong>${s.name}</strong><br><small>${compName}</small></div>
-          <button onclick="deleteItem('sites', '${s.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+          <button onclick="deleteItem('sites', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
         </div>
       </div>`;
     pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${compName})</option>`;
@@ -121,7 +126,7 @@ function renderGuards() {
       <div class="item">
         <div style="display:flex; justify-content:space-between;">
           <div><strong>${g.full_name}</strong><br><small>${g.phone || ''}</small></div>
-          <button onclick="deleteItem('guards', '${g.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+          <button onclick="deleteItem('guards', '${g.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
         </div>
       </div>`;
   });
@@ -135,7 +140,7 @@ function renderPosts() {
       <div class="item">
         <div style="display:flex; justify-content:space-between;">
           <div><strong>${p.name}</strong></div>
-          <button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+          <button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
         </div>
       </div>`;
   });
@@ -151,7 +156,6 @@ function renderShiftSelectors() {
   globalPosts.forEach(p => shiftPost.innerHTML += `<option value="${p.id}">${p.name}</option>`);
 }
 
-// --- ثبت فرم‌ها ---
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
@@ -204,26 +208,27 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- بخش شیفت‌ها و تولید خودکار ---
+// --- بخش شیفت‌ها (با استفاده از فیلدهای موجود در جدول at) ---
 async function loadShifts() {
-  const shifts = await getTable("shifts") || [];
+  const shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
   shList.innerHTML = "";
   
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
-    const start = s.start_time ? s.start_time.replace('T', ' ') : '';
-    const end = s.end_time ? s.end_time.replace('T', ' ') : '';
+    
+    // ما زمان شروع را در فیلد check_in ذخیره کردیم
+    const start = s.check_in ? s.check_in.replace('T', ' ') : 'نامشخص';
     
     shList.innerHTML += `
       <div class="item" style="border-right: 4px solid #3b82f6;">
         <div style="display:flex; justify-content:space-between;">
           <div>
             <strong>${g ? g.full_name : 'نامشخص'}</strong> در ${p ? p.name : 'نامشخص'}<br>
-            <small style="color:#94a3b8">نوع: ${s.shift_type || 'نامشخص'} | از: ${start} تا: ${end}</small>
+            <small style="color:#94a3b8">زمان شروع: ${start}</small>
           </div>
-          <button onclick="deleteItem('shifts', '${s.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
+          <button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
         </div>
       </div>`;
   });
@@ -234,52 +239,51 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const guard_id = document.getElementById("sh-guard").value;
   const post_id = document.getElementById("sh-post").value;
   const shift_type = document.getElementById("sh-type").value;
-  const start_time_val = document.getElementById("sh-start").value;
   const repeat_count = parseInt(document.getElementById("sh-repeat").value);
 
-  if (!guard_id || !post_id || !start_time_val || !repeat_count) return alert("همه فیلدها را پر کنید");
+  if (!guard_id || !post_id || !selectedStartTime || !repeat_count) return alert("همه فیلدها را پر کنید");
 
   const btn = e.target.querySelector("button");
-  setLoading(btn, true, "در حال تولید شیفت‌ها...");
+  setLoading(btn, true, "در حال تولید...");
 
   try {
-    let workHours = 24;
-    let restHours = 48;
-
+    let workHours = 24, restHours = 48;
     if (shift_type === "12-24") { workHours = 12; restHours = 24; }
     else if (shift_type === "12-12") { workHours = 12; restHours = 12; }
 
-    let currentStart = new Date(start_time_val);
+    let currentStart = selectedStartTime;
     let successCount = 0;
 
     for (let i = 0; i < repeat_count; i++) {
+      // زمان پایان را فقط برای محاسبه شیفت بعدی در جاوا اسکریپت استفاده می‌کنیم
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
       const startStr = currentStart.toISOString().slice(0, 16);
       const endStr = currentEnd.toISOString().slice(0, 16);
 
-      await insertTable("shifts", { 
+      // چون فیلد start_time نداریم، زمان شروع را در check_in و زمان پایان را در check_out می‌ریزیم
+      await insertTable("at", { 
         guard_id, 
         post_id, 
-        shift_type, 
-        start_time: startStr, 
-        end_time: endStr 
+        check_in: startStr,
+        check_out: endStr
       });
       
       successCount++;
       currentStart = new Date(currentEnd.getTime() + (restHours * 60 * 60 * 1000));
     }
 
-    alert(`تعداد ${successCount} شیفت با موفقیت تولید و ثبت شد.`);
-    document.getElementById("sh-start").value = ""; 
+    alert(`تعداد ${successCount} شیفت با موفقیت ثبت شد.`);
     document.getElementById("sh-repeat").value = "1";
+    selectedStartTime = null;
+    $("#sh-start").val("");
     
     await loadShifts();
   } catch(err) { 
-    alert("خطا در تولید شیفت‌ها: " + err.message); 
+    alert("خطا در ثبت شیفت: " + err.message); 
   }
   
-  setLoading(btn, false, "ثبت و تولید خودکار شیفت‌ها");
+  setLoading(btn, false, "تولید خودکار شیفت‌ها");
 });
 
 window.deleteItem = async function(table, id, btnElement) {
