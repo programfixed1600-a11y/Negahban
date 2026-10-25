@@ -223,7 +223,7 @@ async function loadShifts() {
         <div style="display:flex; justify-content:space-between;">
           <div>
             <strong>${g ? g.full_name : 'نامشخص'}</strong> در ${p ? p.name : 'نامشخص'}<br>
-            <small style="color:#94a3b8">نوع: ${s.shift_type || 'نامشخص'} | از: ${start} تا: ${end}</small>
+            <small style="color:#94a3b8">از: ${start} تا: ${end}</small>
           </div>
           <button onclick="deleteItem('shifts', '${s.id}', this)" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
         </div>
@@ -235,7 +235,6 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const guard_id = document.getElementById("sh-guard").value;
   const post_id = document.getElementById("sh-post").value;
-  const shift_type = document.getElementById("sh-type").value;
   const start_time = document.getElementById("sh-start").value;
   const end_time = document.getElementById("sh-end").value;
 
@@ -244,7 +243,8 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
   try {
-    await insertTable("shifts", { guard_id, post_id, shift_type, start_time, end_time });
+    // فیلد shift_type فعلاً حذف شده تا خطای فیکارو رخ ندهد
+    await insertTable("shifts", { guard_id, post_id, start_time, end_time });
     document.getElementById("sh-start").value = ""; 
     document.getElementById("sh-end").value = "";
     await loadShifts();
