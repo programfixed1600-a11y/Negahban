@@ -23,7 +23,15 @@
     .card { background:#1e293b; padding:20px; border-radius:12px; border:1px solid #334155; }
     h3 { font-size:16px; margin-top:0; color:#94a3b8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
     .shift-item { background:#0f172a; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #334155; border-right: 4px solid #3b82f6; }
-    .guard-name { color: #60a5fa; font-weight: bold; }
+    
+    .input-group { margin-bottom:10px; }
+    .input-group label { font-size:12px; color:#94a3b8; display:block; margin-bottom:4px; }
+    .input-group input, .input-group textarea { width:100%; padding:10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; font-family:inherit; }
+    
+    .btn-action { width:100%; padding:12px; border-radius:8px; border:none; background:#10b981; color:white; font-weight:bold; cursor:pointer; margin-top:5px; font-size:14px; }
+    .btn-action:hover { background:#059669; }
+    .btn-anon { background:#f59e0b; }
+    .btn-anon:hover { background:#d97706; }
   </style>
 </head>
 <body>
@@ -35,8 +43,8 @@
   <div class="login-container" id="login-section">
     <div class="login-card">
       <h2>ورود به پنل</h2>
-      <p style="text-align:center; font-size:12px; color:#94a3b8; margin-bottom:15px;">جهت احراز هویت، شماره موبایل و کد ملی خود را وارد کنید</p>
-      <input type="text" id="phone-input" placeholder="شماره موبایل (مثال: 09123456789)" />
+      <p style="text-align:center; font-size:12px; color:#94a3b8; margin-bottom:15px;">شماره موبایل و کد ملی خود را وارد کنید</p>
+      <input type="text" id="phone-input" placeholder="شماره موبایل" />
       <input type="text" id="nid-input" placeholder="کد ملی" />
       <button onclick="loginGuard()">ورود</button>
       <div id="login-msg" class="msg err"></div>
@@ -45,8 +53,36 @@
 
   <main id="main-panel">
     <p style="font-size:14px; color:#94a3b8; margin:0;">خوش آمدید: <strong id="guard-name" style="color:#3b82f6;"></strong></p>
+    
     <div class="card">
-      <h3>برنامه شیفت‌های پست شما</h3>
+      <h3>ثبت موقعیت و عکس (برای شیفت امروز)</h3>
+      <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">
+        ۱. ابتدا موقعیت GPS خود را ثبت کنید.<br>
+        ۲. سپس عکس را در سایت <a href="https://uupload.ir" target="_blank" style="color:#3b82f6;">uupload.ir</a> آپلود کرده و لینک آن را اینجا وارد کنید.
+      </p>
+      
+      <button class="btn-action" onclick="recordLocation()">📍 ثبت موقعیت GPS</button>
+      
+      <div class="input-group" style="margin-top:15px;">
+        <label>لینک عکس (از uupload.ir):</label>
+        <input type="text" id="photo-url-input" placeholder="https://uupload.ir/..." style="direction:ltr; text-align:center;" />
+      </div>
+      <button class="btn-action" onclick="submitPhoto()">📸 ثبت لینک عکس</button>
+      
+      <div id="action-status" style="font-size:12px; color:#10b981; text-align:center; margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h3>ارسال پیام ناشناس به مدیر</h3>
+      <div class="input-group">
+        <textarea id="anon-msg" rows="3" placeholder="متن پیام خود را بنویسید..."></textarea>
+      </div>
+      <button class="btn-action btn-anon" onclick="sendAnonymousMsg()">📩 ارسال پیام ناشناس</button>
+      <div id="msg-status" style="font-size:12px; color:#10b981; text-align:center; margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h3>شیفت‌های من</h3>
       <div id="my-shifts">در حال بارگذاری...</div>
     </div>
   </main>
