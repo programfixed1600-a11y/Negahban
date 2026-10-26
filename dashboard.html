@@ -27,6 +27,8 @@
     button.submit:hover { background:#2563eb; }
     .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
     .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
+    
+    .msg-bubble { background:#0f172a; padding:15px; border-radius:8px; margin-bottom:10px; border-right: 4px solid #f59e0b; }
   </style>
 </head>
 <body>
@@ -115,7 +117,6 @@
             <select id="sh-guard3" required style="flex:1;"><option value="">نگهبان ۳...</option></select>
           </div>
 
-          <!-- کادر ساده برای تاریخ و ساعت -->
           <div style="display:flex; gap:10px; align-items:center;">
             <div style="flex:2;">
               <label style="color:#3b82f6; font-weight:bold;">تاریخ شروع (مثال: 1405/08/01):</label>
@@ -147,6 +148,14 @@
         </div>
       </div>
       <div id="shift-list" class="list-container" style="max-height: 400px;"></div>
+    </div>
+
+    <!-- بخش دریافت پیام‌های ناشناس -->
+    <div class="card" style="border: 1px solid #f59e0b;">
+      <h2 style="color:#f59e0b;">📩 پیام‌های ناشناس دریافتی از نگهبان‌ها</h2>
+      <div id="msg-list" class="list-container" style="max-height: 300px;">
+        <p style="color:#94a3b8; text-align:center;">در حال بارگذاری...</p>
+      </div>
     </div>
 
     <div class="card" style="border: 1px solid #ef4444;">

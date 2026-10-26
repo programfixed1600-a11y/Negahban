@@ -4,34 +4,6 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-// تابع تبدیل تاریخ شمسی به میلادی (بدون کتابخانه خارجی)
-function jalaliToGregorian(jy, jm, jd) {
-  jy += 1595;
-  let days = -355668 + (365 * jy) + (~~(jy / 33) * 8) + ~~(((jy % 33) + 3) / 4) + jd + ((jm < 7) ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
-  let gy = 400 * ~~(days / 146097);
-  days %= 146097;
-  if (days > 36524) {
-    gy += 100 * ~~(--days / 36524);
-    days %= 36524;
-    if (days >= 365) days++;
-  }
-  gy += 4 * ~~(days / 1461);
-  days %= 1461;
-  if (days > 365) {
-    gy += ~~((days - 1) / 365);
-    days = (days - 1) % 365;
-  }
-  let gd = days + 1;
-  const sal_a = [0, 31, ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  let gm = 0;
-  for (gm = 0; gm < 13; gm++) {
-    let v = sal_a[gm];
-    if (gd <= v) break;
-    gd -= v;
-  }
-  return [gy, gm, gd];
-}
-
 function checkAuth() {
   const session = localStorage.getItem("fikaro_session");
   if (!session) return (window.location.href = "index.html");
@@ -77,6 +49,34 @@ function setLoading(btn, isLoading, text = "در حال ذخیره...") {
   }
 }
 
+// تابع تبدیل تاریخ شمسی به میلادی
+function jalaliToGregorian(jy, jm, jd) {
+  jy += 1595;
+  let days = -355668 + (365 * jy) + (~~(jy / 33) * 8) + ~~(((jy % 33) + 3) / 4) + jd + ((jm < 7) ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
+  let gy = 400 * ~~(days / 146097);
+  days %= 146097;
+  if (days > 36524) {
+    gy += 100 * ~~(--days / 36524);
+    days %= 36524;
+    if (days >= 365) days++;
+  }
+  gy += 4 * ~~(days / 1461);
+  days %= 1461;
+  if (days > 365) {
+    gy += ~~((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
+  let gd = days + 1;
+  const sal_a = [0, 31, ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  let gm = 0;
+  for (gm = 0; gm < 13; gm++) {
+    let v = sal_a[gm];
+    if (gd <= v) break;
+    gd -= v;
+  }
+  return [gy, gm, gd];
+}
+
 let globalCompanies = [], globalSites = [], globalGuards = [], globalPosts = [];
 
 async function loadAllData() {
@@ -92,6 +92,7 @@ async function loadAllData() {
     renderPosts();
     renderShiftSelectors();
     await loadShifts();
+    await loadMessages(); // فراخوانی پیام‌ها
   } catch (err) { console.error(err); }
 }
 
@@ -198,8 +199,32 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
+// تابع تبدیل تاریخ میلادی به شمسی برای نمایش
+function gregorianToJalali(gy, gm, gd) {
+  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  let jy = (gy <= 1600) ? 0 : 979;
+  gy -= (gy <= 1600) ? 621 : 1600;
+  const gy2 = (gm > 2) ? (gy + 1) : gy;
+  let days = (365 * gy) + (~~((gy2 + 3) / 4)) - (~~((gy2 + 99) / 100)) + (~~((gy2 + 399) / 400)) - 80 + gd + g_d_m[gm - 1];
+  jy += 33 * (~~(days / 12053));
+  days %= 12053;
+  jy += 4 * (~~(days / 1461));
+  days %= 1461;
+  if (days > 365) {
+    jy += ~~((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
+  const jm = (days < 186) ? 1 + ~~(days / 31) : 7 + ~~((days - 186) / 30);
+  const jd = 1 + ((days < 186) ? (days % 31) : ((days - 186) % 30));
+  return [jy, jm, jd];
+}
+
 async function loadShifts() {
   let shifts = await getTable("at") || [];
+  
+  // فیلتر کردن پیام‌ها
+  shifts = shifts.filter(s => s.check_in !== "MESSAGE");
+
   const shList = document.getElementById("shift-list");
   const filterVal = document.getElementById("filter-shift-post").value;
   
@@ -219,24 +244,54 @@ async function loadShifts() {
       const dateParts = parts[0].split('-');
       const timeStr = parts[1] || "00:00";
       const gDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1])-1, parseInt(dateParts[2]));
-      // تبدیل به شمسی برای نمایش در لیست
-      const d = gDate;
-      let gy = d.getFullYear(), gm = d.getMonth() + 1, gd = d.getDate();
-      let jy = gy - 621;
-      let days2 = 355666 + (365 * gy) + ~~(((gm > 2 ? gy + 1 : gy) + 3) / 4) - ~~(((gm > 2 ? gy + 1 : gy) + 99) / 100) + ~~(((gm > 2 ? gy + 1 : gy) + 399) / 400) + gd + [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334][gm - 1];
-      jy = -1595 + (33 * ~~(days2 / 12053));
-      days2 %= 12053;
-      jy += 4 * ~~(days2 / 1461);
-      days2 %= 1461;
-      if (days2 > 365) { jy += ~~((days2 - 1) / 365); days2 = (days2 - 1) % 365; }
-      let jm = days2 < 186 ? 1 + ~~(days2 / 31) : 7 + ~~((days2 - 186) / 30);
-      let jd = days2 < 186 ? 1 + (days2 % 31) : 1 + ((days2 - 186) % 30);
-      
+      const [jy, jm, jd] = gregorianToJalali(gDate.getFullYear(), gDate.getMonth() + 1, gDate.getDate());
       start = `${jy}/${String(jm).padStart(2, '0')}/${String(jd).padStart(2, '0')} - ${timeStr}`;
     }
+
+    // نمایش عکس و موقعیت
+    let extraInfo = "";
+    if (s.checkin_photo) {
+      extraInfo += `<br><small style="color:#10b981;">✅ عکس ورود ثبت شده: <a href="${s.checkin_photo}" target="_blank" style="color:#60a5fa; text-decoration:underline;">مشاهده عکس</a></small>`;
+    }
+    if (s.location) {
+      extraInfo += `<br><small style="color:#60a5fa;">📍 موقعیت: <a href="https://www.google.com/maps?q=${s.location}" target="_blank" style="color:#60a5fa; text-decoration:underline;">مشاهده روی نقشه</a></small>`;
+    }
     
-    shList.innerHTML += `<div class="item" style="border-right: 4px solid #3b82f6;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><strong>${g ? g.full_name : 'نامشخص'}</strong> در <strong>${p ? p.name : 'نامشخص'}</strong><br><small style="color:#94a3b8">زمان شروع: ${start}</small></div><button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
+    shList.innerHTML += `<div class="item" style="border-right: 4px solid #3b82f6;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><strong>${g ? g.full_name : 'نامشخص'}</strong> در <strong>${p ? p.name : 'نامشخص'}</strong><br><small style="color:#94a3b8">زمان شروع: ${start}</small>${extraInfo}</div><button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
   });
+}
+
+// *** نمایش پیام‌های ناشناس ***
+async function loadMessages() {
+  try {
+    const allShifts = await getTable("at") || [];
+    const messages = allShifts.filter(s => s.check_in === "MESSAGE");
+    
+    const msgList = document.getElementById("msg-list");
+    if(!msgList) return;
+
+    msgList.innerHTML = "";
+    if (messages.length === 0) {
+      msgList.innerHTML = "<p style='color:#94a3b8; text-align:center;'>هیچ پیامی دریافت نشده است.</p>";
+      return;
+    }
+
+    // مرتب سازی از جدید به قدیم
+    messages.sort((a,b) => b.id.localeCompare(a.id));
+
+    messages.forEach(m => {
+      // پیدا کردن نام نگهبان
+      const g = globalGuards.find(x => x.id === m.guard_id);
+      const senderName = g ? g.full_name : "ناشناس";
+
+      msgList.innerHTML += `
+        <div class="msg-bubble">
+          <p style="margin:0 0 5px 0; font-weight:bold; font-size:14px;">${m.check_out}</p>
+          <small style="color:#94a3b8">فرستنده: ${senderName} (پیام ناشناس)</small>
+        </div>
+      `;
+    });
+  } catch (err) { console.error(err); }
 }
 
 document.getElementById("delete-post-btn").addEventListener("click", async () => {
@@ -247,7 +302,7 @@ document.getElementById("delete-post-btn").addEventListener("click", async () =>
   const btn = document.getElementById("delete-post-btn"); setLoading(btn, true, "در حال حذف...");
   try {
     const allShifts = await getTable("at") || [];
-    const shiftsToDelete = allShifts.filter(s => s.post_id === post_id);
+    const shiftsToDelete = allShifts.filter(s => s.post_id === post_id && s.check_in !== "MESSAGE");
     if (shiftsToDelete.length === 0) { alert("هیچ شیفتی برای این پست پیدا نشد."); setLoading(btn, false, "حذف شیفت‌های این پست"); return; }
     for (let s of shiftsToDelete) { await deleteTable("at", s.id); await new Promise(r => setTimeout(r, 500)); }
     alert(`تعداد ${shiftsToDelete.length} شیفت مربوط به این پست حذف شد.`);
@@ -256,7 +311,6 @@ document.getElementById("delete-post-btn").addEventListener("click", async () =>
   setLoading(btn, false, "حذف شیفت‌های این پست");
 });
 
-// *** تولید شیفت با خواندن از کادر ساده ***
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const post_id = document.getElementById("sh-post").value;
@@ -275,7 +329,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const dateParts = dateVal.match(/(\d{4})\/(\d{2})\/(\d{2})/);
   const timeParts = timeVal.match(/(\d{2}):(\d{2})/);
 
-  if (!dateParts || !timeParts) return alert("فرمت تاریخ یا ساعت اشتباه است. تاریخ: 1405/08/01 | ساعت: 08:00");
+  if (!dateParts || !timeParts) return alert("فرمت تاریخ یا ساعت اشتباه است.");
 
   const [_, yy, mm, dd] = dateParts;
   const [__, hh, min] = timeParts;
@@ -284,7 +338,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const parsedStartDate = new Date(gy, gm - 1, gd, parseInt(hh), parseInt(min));
 
   const btn = e.target.querySelector("button");
-  setLoading(btn, true, "در حال چینش (لطفاً صبر کنید)...");
+  setLoading(btn, true, "در حال چینش...");
 
   try {
     let workHours = 24;
@@ -319,7 +373,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       guardsQueue.push(currentGuard);
       
       currentStart = new Date(currentEnd.getTime());
-      await new Promise(resolve => setTimeout(resolve, 1500)); 
+      await new Promise(resolve => setTimeout(resolve, 1000)); 
     }
 
     alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
