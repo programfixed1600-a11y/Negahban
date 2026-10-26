@@ -31,14 +31,15 @@
     <h1>نگهبان‌یار</h1>
     <p class="muted">سامانه مدیریت نگهبانی</p>
     <form id="login-form">
-      <input type="email" id="email" placeholder="ایمیل" required />
+      <!-- ورودی از نوع text است تا هم ایمیل و هم شماره موبایل را قبول کند -->
+      <input type="text" id="email" placeholder="شماره موبایل یا ایمیل" required />
       <input type="password" id="password" placeholder="رمز عبور (حداقل ۶ کاراکتر)" required minlength="6" />
       <button type="submit">ورود</button>
       <button type="button" id="signup-btn" class="secondary">ثبت‌نام</button>
     </form>
     <div id="msg" class="msg"></div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
