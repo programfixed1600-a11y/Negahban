@@ -215,13 +215,12 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- بخش شیفت‌ها (با اصلاح باگ پاک شدن) ---
+// --- بخش شیفت‌ها ---
 async function loadShifts() {
   let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
   const filterVal = document.getElementById("filter-shift-post").value;
   
-  // فیلتر کردن لیست شیفت‌ها فقط برای نمایش
   if (filterVal) {
     shifts = shifts.filter(s => s.post_id === filterVal);
   }
@@ -233,7 +232,6 @@ async function loadShifts() {
     return;
   }
 
-  // مرتب سازی شیفت‌ها بر اساس زمان شروع
   shifts.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
 
   shifts.forEach(s => {
@@ -255,6 +253,16 @@ async function loadShifts() {
   });
 }
 
+// تابع کمکی برای تبدیل تاریخ به فرمت محلی (بدون تغییر ساعت به UTC)
+function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
 // ثبت و تولید خودکار
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -269,7 +277,10 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   if (!post_id || !g1 || !g2 || !g3 || !startInputVal || !totalDays) return alert("همه فیلدها را پر کنید");
   if (new Set([g1, g2, g3]).size !== 3) return alert("لطفاً ۳ نگهبان متفاوت انتخاب کنید.");
 
-  const parsedDate = new Date(startInputVal.replace(" ", "T"));
+  // اصلاح فرمت ورودی تاریخ (پشتیبانی از / و -)
+  const cleanDateStr = startInputVal.replace(/\//g, '-').replace(' ', 'T');
+  const parsedDate = new Date(cleanDateStr);
+  
   if (isNaN(parsedDate.getTime())) return alert("فرمت تاریخ اشتباه است. مثال: 2026-10-25 08:00");
 
   const btn = e.target.querySelector("button");
@@ -289,10 +300,10 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       const currentGuard = guardsQueue.shift(); 
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
-      const startStr = currentStart.toISOString().slice(0, 16);
-      const endStr = currentEnd.toISOString().slice(0, 16);
+      // استفاده از تابع جدید برای جلوگیری از خطای ساعت
+      const startStr = formatLocalDate(currentStart);
+      const endStr = formatLocalDate(currentEnd);
 
-      // اینجا فقط درخواست اضافه کردن (POST) می‌فرستیم، هیچ درخواست حذفی وجود ندارد
       await insertTable("at", { 
         guard_id: currentGuard, 
         post_id, 
@@ -302,14 +313,14 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       
       successCount++;
       guardsQueue.push(currentGuard);
-      currentStart = currentEnd; // شروع شیفت بعدی دقیقاً پایان شیفت قبلی است
+      currentStart = currentEnd; 
 
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد. (شیفت‌های قبلی حفظ شدند)`);
+    alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
     
-    // رفرش کردن لیست شیفت‌ها با فیلتر روی پستی که همین الان شیفت ساختیم
+    // تنظیم خودکار فیلتر روی همان پستی که شیفت ساختیم
     document.getElementById("filter-shift-post").value = post_id;
     await loadShifts();
     
