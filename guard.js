@@ -4,83 +4,109 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-let myGuardId = null;
-
-// بررسی لاگین بودن
-function checkAuth() {
-  const session = localStorage.getItem("fikaro_session");
-  const userEmail = localStorage.getItem("user_email");
-  
-  if (!session) return (window.location.href = "index.html");
-  
-  // استخراج شماره موبایل از ایمیل فیک
-  const phone = userEmail.split('@')[0];
-  document.getElementById("user-phone").textContent = phone;
-  
-  loadMyShifts(phone);
-}
-
-document.getElementById("logout-btn").addEventListener("click", () => {
-  localStorage.removeItem("fikaro_session");
-  localStorage.removeItem("user_email");
-  localStorage.removeItem("user_role");
-  window.location.href = "index.html";
-});
-
+// تابع دریافت همه رکوردها
 async function getTable(table) {
-  const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
-  const data = await res.json();
-  return data.data || data;
+  let allData = [];
+  let offset = 0;
+  const limit = 100;
+  while (true) {
+    const res = await fetch(`${BASE_URL}/${table}?limit=${limit}&offset=${offset}`, { headers });
+    const data = await res.json();
+    const items = data.data || data;
+    if (!Array.isArray(items) || items.length === 0) break;
+    allData = allData.concat(items);
+    if (items.length < limit) break;
+    offset += limit;
+  }
+  return allData;
 }
 
-async function updateTable(table, id, payload) {
-  const res = await fetch(`${BASE_URL}/${table}/${id}`, {
-    method: "PATCH", headers, body: JSON.stringify(payload)
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || "خطا در بروزرسانی");
-  return data;
-}
+// ورود نگهبان
+async function loginGuard() {
+  const phone = document.getElementById("phone-input").value.trim();
+  const msg = document.getElementById("login-msg");
+  
+  if (!phone) {
+    msg.textContent = "لطفاً شماره موبایل را وارد کنید.";
+    return;
+  }
 
-// بارگذاری شیفت‌های نگهبان
-async function loadMyShifts(phone) {
-  const container = document.getElementById("my-shifts");
-  container.innerHTML = "در حال دریافت اطلاعات...";
+  msg.textContent = "در حال بررسی...";
+  msg.style.color = "#3b82f6";
 
   try {
     const guards = await getTable("guards") || [];
     // پیدا کردن نگهبان با شماره موبایل
     const myGuard = guards.find(g => g.phone === phone);
-    
+
     if (!myGuard) {
-      container.innerHTML = "<p style='color:#ef4444'>اطلاعات شما در لیست پرسنل پیدا نشد. با مدیر تماس بگیرید.</p>";
+      msg.textContent = "شماره موبایل شما در سیستم ثبت نشده است. با مدیر تماس بگیرید.";
+      msg.style.color = "#ef4444";
       return;
     }
 
-    myGuardId = myGuard.id;
-    
-    let shifts = await getTable("at") || [];
-    let posts = await getTable("posts") || [];
+    // ذخیره اطلاعات در حافظه مرورگر
+    localStorage.setItem("guard_phone", phone);
+    localStorage.setItem("guard_id", myGuard.id);
+    localStorage.setItem("guard_name", myGuard.full_name);
 
-    // فقط شیفت‌های خودم را فیلتر می‌کنم
-    shifts = shifts.filter(s => s.guard_id === myGuardId);
+    // رفتن به پنل
+    showPanel();
+
+  } catch (err) {
+    msg.textContent = "خطا در اتصال به دیتابیس: " + err.message;
+    msg.style.color = "#ef4444";
+  }
+}
+
+// نمایش پنل و مخفی کردن صفحه لاگین
+function showPanel() {
+  document.getElementById("login-section").style.display = "none";
+  document.getElementById("main-panel").style.display = "flex";
+  document.getElementById("logout-btn").style.display = "block";
+  document.getElementById("guard-name").textContent = localStorage.getItem("guard_name");
+  
+  loadMyShifts();
+}
+
+// خروج از حساب
+document.getElementById("logout-btn").addEventListener("click", () => {
+  localStorage.removeItem("guard_phone");
+  localStorage.removeItem("guard_id");
+  localStorage.removeItem("guard_name");
+  window.location.reload();
+});
+
+// بارگذاری شیفت‌های اختصاصی نگهبان
+async function loadMyShifts() {
+  const container = document.getElementById("my-shifts");
+  const myGuardId = localStorage.getItem("guard_id");
+  
+  try {
+    const shifts = await getTable("at") || [];
+    const posts = await getTable("posts") || [];
+    const sites = await getTable("sites") || [];
+
+    // ۱. فقط شیفت‌هایی که مربوط به این نگهبان است
+    let myShifts = shifts.filter(s => s.guard_id === myGuardId);
     
-    // مرتب سازی بر اساس زمان
-    shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
+    // ۲. مرتب‌سازی بر اساس زمان
+    myShifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
     container.innerHTML = "";
     
-    if (shifts.length === 0) {
+    if (myShifts.length === 0) {
       container.innerHTML = "<p style='color:#94a3b8'>هیچ شیفتی برای شما ثبت نشده است.</p>";
       return;
     }
 
-    // نمایش شیفت‌های امروز و آینده
-    const now = new Date();
-    
-    shifts.forEach(s => {
+    // ۳. ساخت لیست
+    myShifts.forEach(s => {
       const p = posts.find(x => x.id === s.post_id);
       const postName = p ? p.name : "نامشخص";
+      
+      const site = p ? sites.find(x => x.id === p.site_id) : null;
+      const siteName = site ? site.name : "";
       
       const startDate = new Date(s.check_in);
       const endDate = new Date(s.check_out);
@@ -89,41 +115,28 @@ async function loadMyShifts(phone) {
       const startTime = startDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
       const endTime = endDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 
-      // آیا این شیفت امروز است؟
+      // بررسی اینکه آیا امروز است
+      const now = new Date();
       const isToday = startDate.toDateString() === now.toDateString();
-      
-      // منطق دکمه‌ها
-      let actionBtn = "";
-      // (در این نسخه ساده، فرض می‌کنیم فیلد check_in همان زمان شروع است. برای ثبت واقعی حضور باید فیلد جدا داشته باشیم، اما فعلاً برای رفع نیاز شما دکمه می‌گذاریم)
-      actionBtn = `<button class="btn-checkin" onclick="registerAttendance('${s.id}')">ثبت ورود (حضور در پست)</button>`;
 
       container.innerHTML += `
         <div class="shift-item" style="${isToday ? 'border-right-color: #10b981; background:#064e3b;' : ''}">
-          <strong>پست: ${postName}</strong><br>
-          <small style="color:#94a3b8">تاریخ: ${dateStr} | از ساعت ${startTime} تا ${endTime}</small>
-          ${isToday ? '<div style="margin-top:5px; color:#10b981; font-weight:bold;">(شیفت امروز شما)</div>' : ''}
-          ${isToday ? actionBtn : ''}
+          <strong style="font-size:15px;">پست: ${postName} ${siteName ? '('+siteName+')' : ''}</strong><br>
+          <small style="color:#94a3b8; display:block; margin-top:5px;">تاریخ: ${dateStr}</small>
+          <small style="color:#94a3b8;">ساعت: از ${startTime} تا ${endTime}</small>
+          ${isToday ? '<div style="margin-top:8px; color:#10b981; font-weight:bold;">(شیفت امروز شما)</div>' : ''}
         </div>
       `;
     });
 
   } catch (err) {
-    container.innerHTML = `<p style="color:#ef4444">خطا: ${err.message}</p>`;
+    container.innerHTML = `<p style="color:#ef4444">خطا در دریافت شیفت‌ها: ${err.message}</p>`;
   }
 }
 
-// ثبت حضور
-window.registerAttendance = async function(shift_id) {
-  if (!confirm("آیا از ثبت حضور خود در پست مطمئن هستید؟")) return;
-  try {
-    // ما در این نسخه، زمان دقیق فعلی را جایگزین زمان شروع می‌کنیم تا حضور ثبت شود
-    const nowStr = new Date().toISOString().slice(0, 16);
-    await updateTable("at", shift_id, { check_in: nowStr }); 
-    alert("حضور شما با موفقیت ثبت شد.");
-    loadMyShifts(localStorage.getItem("user_email").split('@')[0]);
-  } catch (err) {
-    alert("خطا در ثبت: " + err.message);
+// بررسی اینکه آیا نگهبان قبلاً لاگین کرده است یا نه
+window.onload = function() {
+  if (localStorage.getItem("guard_id")) {
+    showPanel();
   }
-}
-
-checkAuth();
+};
