@@ -39,7 +39,7 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
 
-// دریافت همه رکوردها (با محدودیت ۱۰۰۰ تایی برای جلوگیری از قطع شدن)
+// دریافت همه رکوردها (با محدودیت ۱۰۰۰ تایی برای دور زدن محدودیت ۲۰ تایی فیکارو)
 async function getTable(table) {
   const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
   const data = await res.json();
@@ -241,7 +241,7 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- نمایش لیست شیفت‌ها ---
+// --- نمایش لیست شیفت‌ها (با تاریخ شمسی) ---
 async function loadShifts() {
   let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
@@ -258,13 +258,19 @@ async function loadShifts() {
     return;
   }
 
+  // مرتب‌سازی بر اساس زمان
   shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
     
-    const start = s.check_in ? s.check_in.replace('T', ' ') : 'نامشخص';
+    // تبدیل تاریخ به شمسی
+    let start = 'نامشخص';
+    if (s.check_in) {
+      const d = new Date(s.check_in);
+      start = d.toLocaleDateString('fa-IR') + ' - ' + d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+    }
     
     shList.innerHTML += `
       <div class="item" style="border-right: 4px solid #3b82f6;">

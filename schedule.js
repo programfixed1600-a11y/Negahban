@@ -16,6 +16,8 @@ async function initFilters() {
   const sites = await getTable("sites") || [];
   const filterSelect = document.getElementById("filter-post");
   
+  filterSelect.innerHTML = "<option value=''>نمایش همه پست‌ها (دسته‌بندی شده)</option>";
+  
   posts.forEach(p => {
     const site = sites.find(s => s.id === p.site_id);
     const siteName = site ? site.name : '';
@@ -41,7 +43,15 @@ async function loadSchedule() {
       return;
     }
 
-    shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
+    // *** اصلاح مهم: اول بر اساس نام پست، بعد بر اساس زمان مرتب می‌شود تا قاطی نشود ***
+    shifts.sort((a, b) => {
+      const postA = posts.find(p => p.id === a.post_id)?.name || '';
+      const postB = posts.find(p => p.id === b.post_id)?.name || '';
+      if (postA !== postB) {
+        return postA.localeCompare(postB); 
+      }
+      return a.check_in.localeCompare(b.check_in);
+    });
 
     const uniqueGuardIds = [...new Set(shifts.map(s => s.guard_id))];
 
