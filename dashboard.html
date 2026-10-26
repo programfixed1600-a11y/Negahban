@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>پنل مدیریت | نگهبان‌یار</title>
   
-  <!-- فایل‌های محلی تقویم شمسی -->
-  <link rel="stylesheet" href="libs/persian-datepicker.min.css" />
-  
   <style>
     * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
     body { margin:0; background:#0f172a; color:#e2e8f0; display:flex; flex-direction:column; min-height:100vh; }
@@ -30,9 +27,6 @@
     button.submit:hover { background:#2563eb; }
     .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
     .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
-    
-    /* استایل تقویم */
-    .datepicker-plot-area { font-family: Tahoma, sans-serif !important; }
   </style>
 </head>
 <body>
@@ -75,7 +69,6 @@
         <form id="guard-form">
           <input type="text" id="g-name" placeholder="نام و نام خانوادگی" required />
           <input type="text" id="g-phone" placeholder="شماره موبایل" required />
-          <!-- فیلد جدید کد ملی برای امنیت ورود -->
           <input type="text" id="g-national" placeholder="کد ملی" required />
           <button type="submit" class="submit">افزودن نگهبان</button>
         </form>
@@ -124,9 +117,9 @@
 
           <div style="display:flex; gap:10px; align-items:center;">
             <div style="flex:2;">
-              <label>تاریخ و ساعت شروع (کلیک کنید):</label>
-              <!-- ورودی تقویم -->
-              <input type="text" id="sh-start" placeholder="انتخاب تاریخ..." readonly style="margin-bottom:0; cursor:pointer; background:#1e293b;" />
+              <label>تاریخ و ساعت شروع (مثال: 1405/08/01 08:00):</label>
+              <!-- ورودی ساده با راهنما -->
+              <input type="text" id="sh-start" placeholder="1405/08/01 08:00" required style="margin-bottom:0; direction:ltr; text-align:center; font-size:15px;" />
             </div>
             <div style="flex:1;">
               <label>تعداد روز:</label>
@@ -152,7 +145,6 @@
       <div id="shift-list" class="list-container" style="max-height: 400px;"></div>
     </div>
 
-    <!-- بخش حذف گروهی -->
     <div class="card" style="border: 1px solid #ef4444;">
       <h2 style="color:#ef4444;">حذف شیفت‌های یک پست</h2>
       <p style="font-size:12px; color:#94a3b8;">اگر می‌خواهید شیفت‌های یک پست را پاک کنید (و بقیه دست نخورده بمانند)، پست مورد نظر را انتخاب کنید:</p>
@@ -163,11 +155,7 @@
     </div>
   </main>
 
-  <!-- لود کردن فایل‌های محلی از پوشه libs -->
-  <script src="libs/jquery-3.6.0.min.js"></script>
-  <script src="libs/persian-date.min.js"></script>
-  <script src="libs/persian-datepicker.min.js"></script>
-
+  <!-- اسکریپت‌های خارجی کاملاً حذف شدند! -->
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
 </body>
