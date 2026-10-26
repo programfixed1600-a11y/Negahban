@@ -21,13 +21,14 @@ async function getTable(table) {
   return allData;
 }
 
-// ورود نگهبان
+// ورود نگهبان با شماره و کد ملی
 async function loginGuard() {
   const phone = document.getElementById("phone-input").value.trim();
+  const nid = document.getElementById("nid-input").value.trim();
   const msg = document.getElementById("login-msg");
   
-  if (!phone) {
-    msg.textContent = "لطفاً شماره موبایل را وارد کنید.";
+  if (!phone || !nid) {
+    msg.textContent = "لطفاً شماره موبایل و کد ملی را وارد کنید.";
     return;
   }
 
@@ -36,30 +37,26 @@ async function loginGuard() {
 
   try {
     const guards = await getTable("guards") || [];
-    // پیدا کردن نگهبان با شماره موبایل
-    const myGuard = guards.find(g => g.phone === phone);
+    // پیدا کردن نگهبان با شماره موبایل و کد ملی
+    const myGuard = guards.find(g => g.phone === phone && (g.national_id === nid || g.national_code === nid));
 
     if (!myGuard) {
-      msg.textContent = "شماره موبایل شما در سیستم ثبت نشده است. با مدیر تماس بگیرید.";
+      msg.textContent = "اطلاعات وارد شده صحیح نیست. با مدیر تماس بگیرید.";
       msg.style.color = "#ef4444";
       return;
     }
 
-    // ذخیره اطلاعات در حافظه مرورگر
-    localStorage.setItem("guard_phone", phone);
     localStorage.setItem("guard_id", myGuard.id);
     localStorage.setItem("guard_name", myGuard.full_name);
 
-    // رفتن به پنل
     showPanel();
 
   } catch (err) {
-    msg.textContent = "خطا در اتصال به دیتابیس: " + err.message;
+    msg.textContent = "خطا: " + err.message;
     msg.style.color = "#ef4444";
   }
 }
 
-// نمایش پنل و مخفی کردن صفحه لاگین
 function showPanel() {
   document.getElementById("login-section").style.display = "none";
   document.getElementById("main-panel").style.display = "flex";
@@ -69,15 +66,13 @@ function showPanel() {
   loadMyShifts();
 }
 
-// خروج از حساب
 document.getElementById("logout-btn").addEventListener("click", () => {
-  localStorage.removeItem("guard_phone");
   localStorage.removeItem("guard_id");
   localStorage.removeItem("guard_name");
   window.location.reload();
 });
 
-// بارگذاری شیفت‌های اختصاصی نگهبان
+// بارگذاری شیفت‌ها (همه شیفت‌های پست)
 async function loadMyShifts() {
   const container = document.getElementById("my-shifts");
   const myGuardId = localStorage.getItem("guard_id");
@@ -86,28 +81,35 @@ async function loadMyShifts() {
     const shifts = await getTable("at") || [];
     const posts = await getTable("posts") || [];
     const sites = await getTable("sites") || [];
+    const guards = await getTable("guards") || [];
 
-    // ۱. فقط شیفت‌هایی که مربوط به این نگهبان است
-    let myShifts = shifts.filter(s => s.guard_id === myGuardId);
-    
-    // ۲. مرتب‌سازی بر اساس زمان
-    myShifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
+    // ۱. پیدا کردن پست‌هایی که این نگهبان در آن‌ها شیفت دارد
+    const myShiftsOnly = shifts.filter(s => s.guard_id === myGuardId);
+    const myPostIds = [...new Set(myShiftsOnly.map(s => s.post_id))];
 
-    container.innerHTML = "";
-    
-    if (myShifts.length === 0) {
+    if (myPostIds.length === 0) {
       container.innerHTML = "<p style='color:#94a3b8'>هیچ شیفتی برای شما ثبت نشده است.</p>";
       return;
     }
 
-    // ۳. ساخت لیست
-    myShifts.forEach(s => {
+    // ۲. گرفتن تمام شیفت‌های پست‌هایی که این نگهبان در آن‌هاست
+    let postShifts = shifts.filter(s => myPostIds.includes(s.post_id));
+    
+    // ۳. مرتب‌سازی
+    postShifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
+
+    container.innerHTML = "";
+    
+    postShifts.forEach(s => {
       const p = posts.find(x => x.id === s.post_id);
       const postName = p ? p.name : "نامشخص";
       
       const site = p ? sites.find(x => x.id === p.site_id) : null;
       const siteName = site ? site.name : "";
       
+      const g = guards.find(x => x.id === s.guard_id);
+      const guardName = g ? g.full_name : "نامشخص";
+
       const startDate = new Date(s.check_in);
       const endDate = new Date(s.check_out);
       
@@ -115,16 +117,14 @@ async function loadMyShifts() {
       const startTime = startDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
       const endTime = endDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 
-      // بررسی اینکه آیا امروز است
-      const now = new Date();
-      const isToday = startDate.toDateString() === now.toDateString();
+      // آیا این شیفت مربوط به خود من است؟
+      const isMine = (s.guard_id === myGuardId);
 
       container.innerHTML += `
-        <div class="shift-item" style="${isToday ? 'border-right-color: #10b981; background:#064e3b;' : ''}">
+        <div class="shift-item" style="${isMine ? 'border-right-color: #10b981; background:#064e3b;' : ''}">
           <strong style="font-size:15px;">پست: ${postName} ${siteName ? '('+siteName+')' : ''}</strong><br>
-          <small style="color:#94a3b8; display:block; margin-top:5px;">تاریخ: ${dateStr}</small>
-          <small style="color:#94a3b8;">ساعت: از ${startTime} تا ${endTime}</small>
-          ${isToday ? '<div style="margin-top:8px; color:#10b981; font-weight:bold;">(شیفت امروز شما)</div>' : ''}
+          <span style="color:#94a3b8; font-size:13px;">نگهبان: <span class="guard-name">${guardName}</span> ${isMine ? '(شما)' : ''}</span><br>
+          <small style="color:#94a3b8; display:block; margin-top:5px;">تاریخ: ${dateStr} | ساعت: از ${startTime} تا ${endTime}</small>
         </div>
       `;
     });
@@ -134,7 +134,6 @@ async function loadMyShifts() {
   }
 }
 
-// بررسی اینکه آیا نگهبان قبلاً لاگین کرده است یا نه
 window.onload = function() {
   if (localStorage.getItem("guard_id")) {
     showPanel();

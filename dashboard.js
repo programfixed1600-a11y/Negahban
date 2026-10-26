@@ -5,6 +5,7 @@ const headers = {
 const BASE_URL = APP_CONFIG.API_URL;
 
 let selectedStartDate = null;
+let selectedStartDateString = null; // برای ذخیره دقیق متن تاریخ
 
 // راه‌اندازی تقویم شمسی
 function initDatepicker() {
@@ -18,8 +19,17 @@ function initDatepicker() {
     timePicker: { enabled: true },
     initialValue: false,
     autoClose: true,
-    onSelect: function(unix) {
-      selectedStartDate = new persianDate(unix).toDate();
+    onSelect: function(unix, date) {
+      // تبدیل تاریخ شمسی انتخاب شده به فرمت استاندارد میلادی برای دیتابیس
+      const d = new Date(unix);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      
+      selectedStartDateString = `${y}-${m}-${day}T${h}:${min}`;
+      selectedStartDate = new Date(selectedStartDateString);
     }
   });
 }
@@ -39,11 +49,23 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
 
-// دریافت همه رکوردها (با محدودیت ۱۰۰۰ تایی برای دور زدن محدودیت ۲۰ تایی فیکارو)
+// دریافت همه رکوردها با صفحه‌بندی
 async function getTable(table) {
-  const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
-  const data = await res.json();
-  return data.data || data;
+  let allData = [];
+  let offset = 0;
+  const limit = 100;
+  
+  while (true) {
+    const res = await fetch(`${BASE_URL}/${table}?limit=${limit}&offset=${offset}`, { headers });
+    const data = await res.json();
+    const items = data.data || data;
+    
+    if (!Array.isArray(items) || items.length === 0) break;
+    allData = allData.concat(items);
+    if (items.length < limit) break;
+    offset += limit;
+  }
+  return allData;
 }
 
 async function insertTable(table, payload) {
@@ -220,8 +242,8 @@ document.getElementById("guard-form").addEventListener("submit", async (e) => {
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
   try {
-    await insertTable("guards", { full_name: document.getElementById("g-name").value, phone: document.getElementById("g-phone").value });
-    document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = "";
+    await insertTable("guards", { full_name: document.getElementById("g-name").value, phone: document.getElementById("g-phone").value, national_id: document.getElementById("g-national").value });
+    document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = ""; document.getElementById("g-national").value = "";
     await loadAllData();
   } catch(err) { alert(err.message); }
   setLoading(btn, false, "افزودن نگهبان");
@@ -252,20 +274,17 @@ async function loadShifts() {
   }
 
   shList.innerHTML = "";
-  
   if (shifts.length === 0) {
     shList.innerHTML = "<p style='color:#94a3b8; text-align:center;'>هیچ شیفتی ثبت نشده است.</p>";
     return;
   }
 
-  // مرتب‌سازی بر اساس زمان
   shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
     
-    // تبدیل تاریخ به شمسی
     let start = 'نامشخص';
     if (s.check_in) {
       const d = new Date(s.check_in);
@@ -289,7 +308,6 @@ async function loadShifts() {
 document.getElementById("delete-post-btn").addEventListener("click", async () => {
   const post_id = document.getElementById("delete-post-select").value;
   if (!post_id) return alert("لطفاً ابتدا یک پست را انتخاب کنید.");
-  
   const postName = globalPosts.find(p => p.id === post_id)?.name || "این پست";
   if (!confirm(`آیا از حذف تمام شیفت‌های ثبت شده برای «${postName}» مطمئن هستید؟`)) return;
 
@@ -299,37 +317,24 @@ document.getElementById("delete-post-btn").addEventListener("click", async () =>
   try {
     const allShifts = await getTable("at") || [];
     const shiftsToDelete = allShifts.filter(s => s.post_id === post_id);
-    
     if (shiftsToDelete.length === 0) {
       alert("هیچ شیفتی برای این پست پیدا نشد.");
       setLoading(btn, false, "حذف شیفت‌های این پست");
       return;
     }
-
     for (let s of shiftsToDelete) {
       await deleteTable("at", s.id);
       await new Promise(r => setTimeout(r, 500));
     }
-    
     alert(`تعداد ${shiftsToDelete.length} شیفت مربوط به این پست حذف شد.`);
     await loadShifts();
   } catch (err) {
     alert("خطا در حذف: " + err.message);
   }
-  
   setLoading(btn, false, "حذف شیفت‌های این پست");
 });
 
-function formatLocalDate(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  const h = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${d}T${h}:${min}`;
-}
-
-// --- ثبت و تولید خودکار ---
+// --- ثبت و تولید خودکار (با ساعت دقیق) ---
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const post_id = document.getElementById("sh-post").value;
@@ -339,7 +344,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const g3 = document.getElementById("sh-guard3").value;
   const totalDays = parseInt(document.getElementById("sh-days").value);
 
-  if (!post_id || !g1 || !g2 || !g3 || !selectedStartDate || !totalDays) return alert("همه فیلدها را پر کنید");
+  if (!post_id || !g1 || !g2 || !g3 || !selectedStartDateString || !totalDays) return alert("همه فیلدها را پر کنید");
   if (new Set([g1, g2, g3]).size !== 3) return alert("لطفاً ۳ نگهبان متفاوت انتخاب کنید.");
 
   const btn = e.target.querySelector("button");
@@ -350,29 +355,38 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     if (shift_type === "12-24" || shift_type === "12-12") { workHours = 12; }
 
     let guardsQueue = [g1, g2, g3];
-    let currentStart = new Date(selectedStartDate.getTime());
+    
+    // استفاده از متن دقیق تاریخ که در تقویم انتخاب شده
+    let currentStart = new Date(selectedStartDateString);
     let successCount = 0;
     
-    const endDate = new Date(selectedStartDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
+    const endDate = new Date(currentStart.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
       const currentGuard = guardsQueue.shift(); 
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
-      const startStr = formatLocalDate(currentStart);
-      const endStr = formatLocalDate(currentEnd);
+      // تبدیل به فرمت متنی دقیق (بدون تغییر تایم‌زون)
+      const y = currentStart.getFullYear();
+      const m = String(currentStart.getMonth() + 1).padStart(2, '0');
+      const d = String(currentStart.getDate()).padStart(2, '0');
+      const h = String(currentStart.getHours()).padStart(2, '0');
+      const min = String(currentStart.getMinutes()).padStart(2, '0');
+      const startStr = `${y}-${m}-${d}T${h}:${min}`;
 
-      await insertTable("at", { 
-        guard_id: currentGuard, 
-        post_id, 
-        check_in: startStr,
-        check_out: endStr
-      });
-      
+      const y2 = currentEnd.getFullYear();
+      const m2 = String(currentEnd.getMonth() + 1).padStart(2, '0');
+      const d2 = String(currentEnd.getDate()).padStart(2, '0');
+      const h2 = String(currentEnd.getHours()).padStart(2, '0');
+      const min2 = String(currentEnd.getMinutes()).padStart(2, '0');
+      const endStr = `${y2}-${m2}-${d2}T${h2}:${min2}`;
+
+      await insertTable("at", { guard_id: currentGuard, post_id, check_in: startStr, check_out: endStr });
       successCount++;
       guardsQueue.push(currentGuard);
       currentStart = new Date(currentEnd.getTime());
-
+      
+      // تاخیر برای جلوگیری از خطای Rate Limit
       await new Promise(resolve => setTimeout(resolve, 800));
     }
 
@@ -380,13 +394,10 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     
     document.getElementById("filter-shift-post").value = post_id;
     if ($("#sh-start").length) $("#sh-start").val(""); 
-    selectedStartDate = null;
+    selectedStartDateString = null;
     
     await loadShifts();
-  } catch(err) { 
-    alert("خطا در ثبت شیفت: " + err.message); 
-  }
-  
+  } catch(err) { alert("خطا در ثبت شیفت: " + err.message); }
   setLoading(btn, false, "تولید خودکار جدول");
 });
 

@@ -11,7 +11,6 @@
     header h1 { margin:0; font-size:18px; }
     header button { background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:inherit; display:none; }
     
-    /* صفحه لاگین */
     .login-container { flex:1; display:flex; align-items:center; justify-content:center; padding:20px; }
     .login-card { width:100%; max-width:400px; background:#1e293b; padding:30px; border-radius:16px; border:1px solid #334155; }
     .login-card h2 { text-align:center; margin-top:0; margin-bottom:20px; color:#3b82f6; }
@@ -20,11 +19,11 @@
     .msg { text-align:center; font-size:13px; margin-top:10px; }
     .msg.err { color:#ef4444; }
 
-    /* پنل اصلی */
     main { padding:16px; flex:1; max-width:600px; margin:0 auto; width:100%; display:none; flex-direction:column; gap:15px; }
     .card { background:#1e293b; padding:20px; border-radius:12px; border:1px solid #334155; }
     h3 { font-size:16px; margin-top:0; color:#94a3b8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
     .shift-item { background:#0f172a; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #334155; border-right: 4px solid #3b82f6; }
+    .guard-name { color: #60a5fa; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -33,22 +32,21 @@
     <button id="logout-btn">خروج</button>
   </header>
   
-  <!-- صفحه ورود نگهبان -->
   <div class="login-container" id="login-section">
     <div class="login-card">
-      <h2>ورود نگهبان</h2>
-      <p style="text-align:center; font-size:12px; color:#94a3b8;">لطفاً شماره موبایل ثبت شده خود را وارد کنید</p>
-      <input type="text" id="phone-input" placeholder="مثال: 09123456789" />
-      <button onclick="loginGuard()">ورود به پنل</button>
+      <h2>ورود به پنل</h2>
+      <p style="text-align:center; font-size:12px; color:#94a3b8; margin-bottom:15px;">جهت احراز هویت، شماره موبایل و کد ملی خود را وارد کنید</p>
+      <input type="text" id="phone-input" placeholder="شماره موبایل (مثال: 09123456789)" />
+      <input type="text" id="nid-input" placeholder="کد ملی" />
+      <button onclick="loginGuard()">ورود</button>
       <div id="login-msg" class="msg err"></div>
     </div>
   </div>
 
-  <!-- پنل بعد از ورود -->
   <main id="main-panel">
     <p style="font-size:14px; color:#94a3b8; margin:0;">خوش آمدید: <strong id="guard-name" style="color:#3b82f6;"></strong></p>
     <div class="card">
-      <h3>شیفت‌های من</h3>
+      <h3>برنامه شیفت‌های پست شما</h3>
       <div id="my-shifts">در حال بارگذاری...</div>
     </div>
   </main>
