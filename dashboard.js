@@ -77,6 +77,26 @@ function jalaliToGregorian(jy, jm, jd) {
   return [gy, gm, gd];
 }
 
+// تابع تبدیل تاریخ میلادی به شمسی برای نمایش
+function gregorianToJalali(gy, gm, gd) {
+  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  let jy = (gy <= 1600) ? 0 : 979;
+  gy -= (gy <= 1600) ? 621 : 1600;
+  const gy2 = (gm > 2) ? (gy + 1) : gy;
+  let days = (365 * gy) + (~~((gy2 + 3) / 4)) - (~~((gy2 + 99) / 100)) + (~~((gy2 + 399) / 400)) - 80 + gd + g_d_m[gm - 1];
+  jy += 33 * (~~(days / 12053));
+  days %= 12053;
+  jy += 4 * (~~(days / 1461));
+  days %= 1461;
+  if (days > 365) {
+    jy += ~~((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
+  const jm = (days < 186) ? 1 + ~~(days / 31) : 7 + ~~((days - 186) / 30);
+  const jd = 1 + ((days < 186) ? (days % 31) : ((days - 186) % 30));
+  return [jy, jm, jd];
+}
+
 let globalCompanies = [], globalSites = [], globalGuards = [], globalPosts = [];
 
 async function loadAllData() {
@@ -92,7 +112,7 @@ async function loadAllData() {
     renderPosts();
     renderShiftSelectors();
     await loadShifts();
-    await loadMessages(); // فراخوانی پیام‌ها
+    await loadMessages(); // *** این خط حالا پیام‌ها را لود می‌کند ***
   } catch (err) { console.error(err); }
 }
 
@@ -199,26 +219,6 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// تابع تبدیل تاریخ میلادی به شمسی برای نمایش
-function gregorianToJalali(gy, gm, gd) {
-  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-  let jy = (gy <= 1600) ? 0 : 979;
-  gy -= (gy <= 1600) ? 621 : 1600;
-  const gy2 = (gm > 2) ? (gy + 1) : gy;
-  let days = (365 * gy) + (~~((gy2 + 3) / 4)) - (~~((gy2 + 99) / 100)) + (~~((gy2 + 399) / 400)) - 80 + gd + g_d_m[gm - 1];
-  jy += 33 * (~~(days / 12053));
-  days %= 12053;
-  jy += 4 * (~~(days / 1461));
-  days %= 1461;
-  if (days > 365) {
-    jy += ~~((days - 1) / 365);
-    days = (days - 1) % 365;
-  }
-  const jm = (days < 186) ? 1 + ~~(days / 31) : 7 + ~~((days - 186) / 30);
-  const jd = 1 + ((days < 186) ? (days % 31) : ((days - 186) % 30));
-  return [jy, jm, jd];
-}
-
 async function loadShifts() {
   let shifts = await getTable("at") || [];
   
@@ -251,7 +251,7 @@ async function loadShifts() {
     // نمایش عکس و موقعیت
     let extraInfo = "";
     if (s.checkin_photo) {
-      extraInfo += `<br><small style="color:#10b981;">✅ عکس ورود ثبت شده: <a href="${s.checkin_photo}" target="_blank" style="color:#60a5fa; text-decoration:underline;">مشاهده عکس</a></small>`;
+      extraInfo += `<br><small style="color:#10b981;">✅ عکس ورود: <a href="${s.checkin_photo}" target="_blank" style="color:#60a5fa; text-decoration:underline;">مشاهده</a></small>`;
     }
     if (s.location) {
       extraInfo += `<br><small style="color:#60a5fa;">📍 موقعیت: <a href="https://www.google.com/maps?q=${s.location}" target="_blank" style="color:#60a5fa; text-decoration:underline;">مشاهده روی نقشه</a></small>`;
@@ -261,7 +261,7 @@ async function loadShifts() {
   });
 }
 
-// *** نمایش پیام‌های ناشناس ***
+// *** تابع نمایش پیام‌ها ***
 async function loadMessages() {
   try {
     const allShifts = await getTable("at") || [];
@@ -276,11 +276,10 @@ async function loadMessages() {
       return;
     }
 
-    // مرتب سازی از جدید به قدیم
-    messages.sort((a,b) => b.id.localeCompare(a.id));
+    // مرتب سازی بر اساس جدیدترین
+    messages.reverse();
 
     messages.forEach(m => {
-      // پیدا کردن نام نگهبان
       const g = globalGuards.find(x => x.id === m.guard_id);
       const senderName = g ? g.full_name : "ناشناس";
 
