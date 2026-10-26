@@ -4,6 +4,22 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
+let selectedStartDate = null;
+
+// راه اندازی تقویم شمسی
+$(document).ready(function() {
+  $("#sh-start").persianDatepicker({
+    format: 'YYYY/MM/DD HH:mm',
+    timePicker: { enabled: true },
+    initialValue: false,
+    autoClose: true,
+    onSelect: function(unix) {
+      // تبدیل تاریخ انتخاب شده به یک شیء Date استاندارد
+      selectedStartDate = new persianDate(unix).toDate();
+    }
+  });
+});
+
 function checkAuth() {
   const session = localStorage.getItem("fikaro_session");
   if (!session) return (window.location.href = "index.html");
@@ -163,6 +179,7 @@ function renderShiftSelectors() {
   });
 }
 
+// --- ثبت فرم‌ها (شرکت، سایت، نگهبان، پست) ---
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
@@ -215,7 +232,7 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- بخش شیفت‌ها ---
+// --- بخش نمایش و حذف گروهی شیفت‌ها ---
 async function loadShifts() {
   let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
@@ -233,6 +250,17 @@ async function loadShifts() {
   }
 
   shifts.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
+
+  // ما یک دکمه حذف گروهی در بالای لیست قرار می‌دهیم
+  let postTitle = filterVal ? globalPosts.find(p => p.id === filterVal)?.name : "همه پست‌ها";
+  
+  shList.innerHTML += `
+    <div style="margin-bottom:10px; display:flex; justify-content:flex-end;">
+      <button onclick="deleteAllShiftsForPost('${filterVal}')" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">
+        🗑️ حذف کل شیفت‌های پست (${postTitle})
+      </button>
+    </div>
+  `;
 
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
@@ -253,7 +281,29 @@ async function loadShifts() {
   });
 }
 
-// تابع کمکی برای تبدیل تاریخ به فرمت محلی (بدون تغییر ساعت به UTC)
+// حذف گروهی شیفت‌های یک پست
+window.deleteAllShiftsForPost = async function(post_id) {
+  if (!post_id) return alert("لطفاً ابتدا از منوی فیلتر بالا، یک پست را انتخاب کنید تا شیفت‌های آن حذف شود.");
+  
+  const postName = globalPosts.find(p => p.id === post_id)?.name || "این پست";
+  if (!confirm(`آیا از حذف تمام شیفت‌های ثبت شده برای «${postName}» مطمئن هستید؟`)) return;
+
+  try {
+    const shiftsToDelete = (await getTable("at") || []).filter(s => s.post_id === post_id);
+    
+    for (let s of shiftsToDelete) {
+      await deleteTable("at", s.id);
+      await new Promise(r => setTimeout(r, 300)); // وقفه برای جلوگیری از خطای Rate Limit
+    }
+    
+    alert("تمام شیفت‌های این پست حذف شد.");
+    await loadShifts();
+  } catch (err) {
+    alert("خطا در حذف: " + err.message);
+  }
+}
+
+// تبدیل تاریخ به فرمت میلادی برای ذخیره در دیتابیس
 function formatLocalDate(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -263,7 +313,7 @@ function formatLocalDate(date) {
   return `${y}-${m}-${d}T${h}:${min}`;
 }
 
-// ثبت و تولید خودکار
+// --- ثبت و تولید خودکار ---
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const post_id = document.getElementById("sh-post").value;
@@ -271,17 +321,10 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const g1 = document.getElementById("sh-guard1").value;
   const g2 = document.getElementById("sh-guard2").value;
   const g3 = document.getElementById("sh-guard3").value;
-  const startInputVal = document.getElementById("sh-start").value;
   const totalDays = parseInt(document.getElementById("sh-days").value);
 
-  if (!post_id || !g1 || !g2 || !g3 || !startInputVal || !totalDays) return alert("همه فیلدها را پر کنید");
+  if (!post_id || !g1 || !g2 || !g3 || !selectedStartDate || !totalDays) return alert("همه فیلدها را پر کنید");
   if (new Set([g1, g2, g3]).size !== 3) return alert("لطفاً ۳ نگهبان متفاوت انتخاب کنید.");
-
-  // اصلاح فرمت ورودی تاریخ (پشتیبانی از / و -)
-  const cleanDateStr = startInputVal.replace(/\//g, '-').replace(' ', 'T');
-  const parsedDate = new Date(cleanDateStr);
-  
-  if (isNaN(parsedDate.getTime())) return alert("فرمت تاریخ اشتباه است. مثال: 2026-10-25 08:00");
 
   const btn = e.target.querySelector("button");
   setLoading(btn, true, "در حال چینش...");
@@ -291,19 +334,19 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     if (shift_type === "12-24" || shift_type === "12-12") { workHours = 12; }
 
     let guardsQueue = [g1, g2, g3];
-    let currentStart = parsedDate;
+    let currentStart = selectedStartDate;
     let successCount = 0;
     
-    const endDate = new Date(parsedDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
+    const endDate = new Date(selectedStartDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
       const currentGuard = guardsQueue.shift(); 
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
-      // استفاده از تابع جدید برای جلوگیری از خطای ساعت
       const startStr = formatLocalDate(currentStart);
       const endStr = formatLocalDate(currentEnd);
 
+      // فقط عملیات درج انجام می‌شود (هیچ حذفی در کار نیست)
       await insertTable("at", { 
         guard_id: currentGuard, 
         post_id, 
@@ -320,10 +363,12 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
 
     alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
     
-    // تنظیم خودکار فیلتر روی همان پستی که شیفت ساختیم
+    // تنظیم خودکار فیلتر روی همان پست
     document.getElementById("filter-shift-post").value = post_id;
-    await loadShifts();
+    $("#sh-start").val(""); // خالی کردن کادر تقویم
+    selectedStartDate = null;
     
+    await loadShifts();
   } catch(err) { 
     alert("خطا در ثبت شیفت: " + err.message); 
   }

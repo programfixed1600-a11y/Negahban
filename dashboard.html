@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>پنل مدیریت | نگهبان‌یار</title>
   
+  <!-- پلاگین تقویم شمسی -->
+  <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css" />
+  
   <style>
     * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
     body { margin:0; background:#0f172a; color:#e2e8f0; display:flex; flex-direction:column; min-height:100vh; }
@@ -27,6 +30,9 @@
     button.submit:hover { background:#2563eb; }
     .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
     .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
+    
+    /* استایل تقویم */
+    .datepicker-plot-area { font-family: Tahoma, sans-serif !important; }
   </style>
 </head>
 <body>
@@ -116,8 +122,9 @@
 
           <div style="display:flex; gap:10px; align-items:center;">
             <div style="flex:2;">
-              <label>تاریخ و ساعت شروع (مثال: 2026-10-25 08:00):</label>
-              <input type="text" id="sh-start" placeholder="2026-10-25 08:00" required style="margin-bottom:0;" />
+              <label>تاریخ و ساعت شروع (کلیک کنید):</label>
+              <!-- ورودی تقویم شمسی -->
+              <input type="text" id="sh-start" placeholder="انتخاب تاریخ..." readonly style="margin-bottom:0; cursor:pointer; background:#1e293b;" />
             </div>
             <div style="flex:1;">
               <label>تعداد روز:</label>
@@ -143,6 +150,11 @@
       <div id="shift-list" class="list-container" style="max-height: 400px;"></div>
     </div>
   </main>
+
+  <!-- اسکریپت‌های تقویم -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
+  <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
