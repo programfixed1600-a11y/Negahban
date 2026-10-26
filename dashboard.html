@@ -115,11 +115,15 @@
             <select id="sh-guard3" required style="flex:1;"><option value="">نگهبان ۳...</option></select>
           </div>
 
+          <!-- جدا کردن تاریخ و ساعت -->
           <div style="display:flex; gap:10px; align-items:center;">
             <div style="flex:2;">
-              <label>تاریخ و ساعت شروع (مثال: 1405/08/01 08:00):</label>
-              <!-- ورودی ساده با راهنما -->
-              <input type="text" id="sh-start" placeholder="1405/08/01 08:00" required style="margin-bottom:0; direction:ltr; text-align:center; font-size:15px;" />
+              <label>تاریخ شروع (مثال: 1405/08/01):</label>
+              <input type="text" id="sh-date" placeholder="1405/08/01" required style="margin-bottom:0; direction:ltr; text-align:center;" />
+            </div>
+            <div style="flex:1;">
+              <label>ساعت شروع (مثال: 08:00):</label>
+              <input type="text" id="sh-time" placeholder="08:00" required style="margin-bottom:0; direction:ltr; text-align:center;" />
             </div>
             <div style="flex:1;">
               <label>تعداد روز:</label>
@@ -147,7 +151,7 @@
 
     <div class="card" style="border: 1px solid #ef4444;">
       <h2 style="color:#ef4444;">حذف شیفت‌های یک پست</h2>
-      <p style="font-size:12px; color:#94a3b8;">اگر می‌خواهید شیفت‌های یک پست را پاک کنید (و بقیه دست نخورده بمانند)، پست مورد نظر را انتخاب کنید:</p>
+      <p style="font-size:12px; color:#94a3b8;">اگر می‌خواهید شیفت‌های یک پست را پاک کنید، پست مورد نظر را انتخاب کنید:</p>
       <div style="display:flex; gap:10px;">
         <select id="delete-post-select" style="flex:2; margin:0;"></select>
         <button id="delete-post-btn" style="flex:1; border:none; background:#ef4444; color:white; border-radius:8px; font-weight:bold; cursor:pointer; font-family:inherit;">حذف شیفت‌های این پست</button>
@@ -155,7 +159,6 @@
     </div>
   </main>
 
-  <!-- اسکریپت‌های خارجی کاملاً حذف شدند! -->
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
 </body>
