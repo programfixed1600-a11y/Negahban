@@ -4,7 +4,17 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-// دریافت همه رکوردها (با محدودیت ۱۰۰۰ تایی)
+// خواندن تاریخ بدون تغییر ساعت
+function safeStringToDate(str) {
+  if (!str) return new Date();
+  const match = str.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (match) {
+    const [_, y, m, d, h, min] = match;
+    return new Date(y, m - 1, d, h, min);
+  }
+  return new Date(str);
+}
+
 async function getTable(table) {
   const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
   const data = await res.json();
@@ -16,8 +26,7 @@ async function initFilters() {
   const sites = await getTable("sites") || [];
   const filterSelect = document.getElementById("filter-post");
   
-  filterSelect.innerHTML = "<option value=''>نمایش همه پست‌ها (دسته‌بندی شده)</option>";
-  
+  filterSelect.innerHTML = "<option value=''>نمایش همه پست‌ها</option>";
   posts.forEach(p => {
     const site = sites.find(s => s.id === p.site_id);
     const siteName = site ? site.name : '';
@@ -43,15 +52,8 @@ async function loadSchedule() {
       return;
     }
 
-    // *** اصلاح مهم: اول بر اساس نام پست، بعد بر اساس زمان مرتب می‌شود تا قاطی نشود ***
-    shifts.sort((a, b) => {
-      const postA = posts.find(p => p.id === a.post_id)?.name || '';
-      const postB = posts.find(p => p.id === b.post_id)?.name || '';
-      if (postA !== postB) {
-        return postA.localeCompare(postB); 
-      }
-      return a.check_in.localeCompare(b.check_in);
-    });
+    // مرتب‌سازی دقیق
+    shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
     const uniqueGuardIds = [...new Set(shifts.map(s => s.guard_id))];
 
@@ -77,12 +79,12 @@ async function loadSchedule() {
       let dateStr = "-", startTime = "-", endTime = "-";
 
       if (s.check_in) {
-        const startDate = new Date(s.check_in);
+        const startDate = safeStringToDate(s.check_in);
         dateStr = startDate.toLocaleDateString('fa-IR');
         startTime = startDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
       }
       if (s.check_out) {
-        const endDate = new Date(s.check_out);
+        const endDate = safeStringToDate(s.check_out);
         endTime = endDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
       }
 

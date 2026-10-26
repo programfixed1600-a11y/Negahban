@@ -4,8 +4,28 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-let selectedStartDate = null;
 let selectedStartDateString = null;
+
+// تبدیل تاریخ به متن استاندارد بدون تغییر ساعت
+function dateToSafeString(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
+// خواندن تاریخ از متن بدون تغییر ساعت
+function safeStringToDate(str) {
+  if (!str) return new Date();
+  const match = str.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (match) {
+    const [_, y, m, d, h, min] = match;
+    return new Date(y, m - 1, d, h, min);
+  }
+  return new Date(str);
+}
 
 function initDatepicker() {
   if (typeof $ === 'undefined' || !$.fn.persianDatepicker) return;
@@ -15,16 +35,9 @@ function initDatepicker() {
     timePicker: { enabled: true },
     initialValue: false,
     autoClose: true,
-    onSelect: function(unix, date) {
-      const d = new Date(unix);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const h = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      
-      selectedStartDateString = `${y}-${m}-${day}T${h}:${min}`;
-      selectedStartDate = new Date(selectedStartDateString);
+    onSelect: function(unix) {
+      const d = new persianDate(unix).toDate();
+      selectedStartDateString = dateToSafeString(d);
     }
   });
 }
@@ -44,7 +57,6 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
 
-// *** برگشت به روش ساده و کارآمد قبلی (حل مشکل کرش) ***
 async function getTable(table) {
   const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
   const data = await res.json();
@@ -179,7 +191,6 @@ document.getElementById("site-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن سایت");
 });
 
-// *** اضافه شدن فیلد کد ملی برای نگهبان ***
 document.getElementById("guard-form").addEventListener("submit", async (e) => {
   e.preventDefault(); const btn = e.target.querySelector("button"); setLoading(btn, true);
   try { 
@@ -215,7 +226,7 @@ async function loadShifts() {
     const p = globalPosts.find(x => x.id === s.post_id);
     let start = 'نامشخص';
     if (s.check_in) {
-      const d = new Date(s.check_in);
+      const d = safeStringToDate(s.check_in);
       start = d.toLocaleDateString('fa-IR') + ' - ' + d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
     }
     shList.innerHTML += `<div class="item" style="border-right: 4px solid #3b82f6;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><strong>${g ? g.full_name : 'نامشخص'}</strong> در <strong>${p ? p.name : 'نامشخص'}</strong><br><small style="color:#94a3b8">زمان شروع: ${start}</small></div><button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
@@ -259,41 +270,35 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     if (shift_type === "12-24" || shift_type === "12-12") { workHours = 12; }
 
     let guardsQueue = [g1, g2, g3];
-    let currentStart = new Date(selectedStartDateString);
+    let currentStart = safeStringToDate(selectedStartDateString);
     let successCount = 0;
+    
     const endDate = new Date(currentStart.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
       const currentGuard = guardsQueue.shift(); 
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
-      const y = currentStart.getFullYear();
-      const m = String(currentStart.getMonth() + 1).padStart(2, '0');
-      const d = String(currentStart.getDate()).padStart(2, '0');
-      const h = String(currentStart.getHours()).padStart(2, '0');
-      const min = String(currentStart.getMinutes()).padStart(2, '0');
-      const startStr = `${y}-${m}-${d}T${h}:${min}`;
-
-      const y2 = currentEnd.getFullYear();
-      const m2 = String(currentEnd.getMonth() + 1).padStart(2, '0');
-      const d2 = String(currentEnd.getDate()).padStart(2, '0');
-      const h2 = String(currentEnd.getHours()).padStart(2, '0');
-      const min2 = String(currentEnd.getMinutes()).padStart(2, '0');
-      const endStr = `${y2}-${m2}-${d2}T${h2}:${min2}`;
+      const startStr = dateToSafeString(currentStart);
+      const endStr = dateToSafeString(currentEnd);
 
       await insertTable("at", { guard_id: currentGuard, post_id, check_in: startStr, check_out: endStr });
       successCount++;
       guardsQueue.push(currentGuard);
       currentStart = new Date(currentEnd.getTime());
-      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // تاخیر بیشتر برای جلوگیری از خطای Rate Limit (کم آوردن تعداد روزها)
+      await new Promise(resolve => setTimeout(resolve, 1200));
     }
 
     alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
+    
     document.getElementById("filter-shift-post").value = post_id;
     if ($("#sh-start").length) $("#sh-start").val(""); 
     selectedStartDateString = null;
+    
     await loadShifts();
-  } catch(err) { alert("خطا در ثبت شیفت: " + err.message); }
+  } catch(err) { alert("خطا در ثبت شیفت (احتمالاً به دلیل محدودیت سرور): " + err.message); }
   setLoading(btn, false, "تولید خودکار جدول");
 });
 
