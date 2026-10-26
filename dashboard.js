@@ -6,27 +6,7 @@ const BASE_URL = APP_CONFIG.API_URL;
 
 let selectedStartDateString = null;
 
-// تبدیل تاریخ به متن استاندارد بدون تغییر ساعت
-function dateToSafeString(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  const h = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${d}T${h}:${min}`;
-}
-
-// خواندن تاریخ از متن بدون تغییر ساعت
-function safeStringToDate(str) {
-  if (!str) return new Date();
-  const match = str.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
-  if (match) {
-    const [_, y, m, d, h, min] = match;
-    return new Date(y, m - 1, d, h, min);
-  }
-  return new Date(str);
-}
-
+// راه‌اندازی تقویم
 function initDatepicker() {
   if (typeof $ === 'undefined' || !$.fn.persianDatepicker) return;
   
@@ -35,9 +15,24 @@ function initDatepicker() {
     timePicker: { enabled: true },
     initialValue: false,
     autoClose: true,
-    onSelect: function(unix) {
-      const d = new persianDate(unix).toDate();
-      selectedStartDateString = dateToSafeString(d);
+    onSelect: function() {
+      // *** تغییر اصلی: ما به جای گرفتن تاریخ از سیستم، دقیقاً همان متنی که در کادر است را می‌خوانیم ***
+      const inputVal = document.getElementById("sh-start").value; 
+      if (!inputVal) return;
+
+      // تبدیل متن تقویم شمسی (1405/08/01 08:00) به فرمت دیتابیس (2026-10-23T08:00)
+      const parts = inputVal.match(/(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+      if (parts) {
+        const [_, yy, mm, dd, hh, min] = parts;
+        // اینجا تاریخ شمسی را به میلادی تبدیل می‌کنیم (فقط برای ذخیره)
+        const gDate = new persianDate([parseInt(yy), parseInt(mm), parseInt(dd), parseInt(hh), parseInt(min)]).toCalendar('gregorian').toDate();
+        
+        // اما ساعت را دست نمی‌زنیم و همان متن را می‌سازیم
+        const gY = gDate.getFullYear();
+        const gM = String(gDate.getMonth() + 1).padStart(2, '0');
+        const gD = String(gDate.getDate()).padStart(2, '0');
+        selectedStartDateString = `${gY}-${gM}-${gD}T${hh}:${min}`;
+      }
     }
   });
 }
@@ -224,11 +219,19 @@ async function loadShifts() {
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
+    
+    // نمایش زمان به صورت شمسی
     let start = 'نامشخص';
     if (s.check_in) {
-      const d = safeStringToDate(s.check_in);
-      start = d.toLocaleDateString('fa-IR') + ' - ' + d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+      const parts = s.check_in.split('T');
+      const dateParts = parts[0].split('-');
+      const timeStr = parts[1] || "00:00";
+      // چون تاریخ در دیتابیس میلادی است، آن را به شمسی تبدیل می‌کنیم
+      const gDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1])-1, parseInt(dateParts[2]));
+      const jDate = new persianDate(gDate).format('YYYY/MM/DD');
+      start = jDate + ' - ' + timeStr;
     }
+    
     shList.innerHTML += `<div class="item" style="border-right: 4px solid #3b82f6;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><strong>${g ? g.full_name : 'نامشخص'}</strong> در <strong>${p ? p.name : 'نامشخص'}</strong><br><small style="color:#94a3b8">زمان شروع: ${start}</small></div><button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
   });
 }
@@ -259,18 +262,18 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const g3 = document.getElementById("sh-guard3").value;
   const totalDays = parseInt(document.getElementById("sh-days").value);
 
-  if (!post_id || !g1 || !g2 || !g3 || !selectedStartDateString || !totalDays) return alert("همه فیلدها را پر کنید");
+  if (!post_id || !g1 || !g2 || !g3 || !selectedStartDateString || !totalDays) return alert("همه فیلدها را پر کنید (تاریخ را حتماً از تقویم انتخاب کنید)");
   if (new Set([g1, g2, g3]).size !== 3) return alert("لطفاً ۳ نگهبان متفاوت انتخاب کنید.");
 
   const btn = e.target.querySelector("button");
-  setLoading(btn, true, "در حال چینش...");
+  setLoading(btn, true, "در حال چینش (لطفاً صبر کنید)...");
 
   try {
     let workHours = 24;
     if (shift_type === "12-24" || shift_type === "12-12") { workHours = 12; }
 
     let guardsQueue = [g1, g2, g3];
-    let currentStart = safeStringToDate(selectedStartDateString);
+    let currentStart = new Date(selectedStartDateString);
     let successCount = 0;
     
     const endDate = new Date(currentStart.getTime() + (totalDays * 24 * 60 * 60 * 1000));
@@ -279,16 +282,34 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       const currentGuard = guardsQueue.shift(); 
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
-      const startStr = dateToSafeString(currentStart);
-      const endStr = dateToSafeString(currentEnd);
+      // چون قبلا تاریخ رو تبدیل کردیم و selectedStartDateString الان میلادی و دقیق است
+      const startStr = selectedStartDateString; // برای شیفت اول
+      
+      // برای شیفت‌های بعدی، یک روز یا ۱۲ ساعت به زمان اضافه می‌کنیم
+      const nextStart = new Date(currentStart.getTime());
+      const y = nextStart.getFullYear();
+      const m = String(nextStart.getMonth() + 1).padStart(2, '0');
+      const d = String(nextStart.getDate()).padStart(2, '0');
+      const h = String(nextStart.getHours()).padStart(2, '0');
+      const min = String(nextStart.getMinutes()).padStart(2, '0');
+      const finalStartStr = `${y}-${m}-${d}T${h}:${min}`;
 
-      await insertTable("at", { guard_id: currentGuard, post_id, check_in: startStr, check_out: endStr });
+      const endY = currentEnd.getFullYear();
+      const endM = String(currentEnd.getMonth() + 1).padStart(2, '0');
+      const endD = String(currentEnd.getDate()).padStart(2, '0');
+      const endH = String(currentEnd.getHours()).padStart(2, '0');
+      const endMin = String(currentEnd.getMinutes()).padStart(2, '0');
+      const finalEndStr = `${endY}-${endM}-${endD}T${endH}:${endMin}`;
+
+      await insertTable("at", { guard_id: currentGuard, post_id, check_in: finalStartStr, check_out: finalEndStr });
       successCount++;
       guardsQueue.push(currentGuard);
+      
+      // زمان شروع شیفت بعدی = زمان پایان شیفت فعلی
       currentStart = new Date(currentEnd.getTime());
       
-      // تاخیر بیشتر برای جلوگیری از خطای Rate Limit (کم آوردن تعداد روزها)
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // *** تاخیر ۲ ثانیه‌ای برای جلوگیری از خطای Rate Limit فیکارو ***
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
@@ -298,7 +319,7 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     selectedStartDateString = null;
     
     await loadShifts();
-  } catch(err) { alert("خطا در ثبت شیفت (احتمالاً به دلیل محدودیت سرور): " + err.message); }
+  } catch(err) { alert("خطا در ثبت شیفت (ممکن است به دلیل کندی اینترنت یا محدودیت فیکارو باشد): " + err.message); }
   setLoading(btn, false, "تولید خودکار جدول");
 });
 
