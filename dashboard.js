@@ -5,14 +5,10 @@ const headers = {
 const BASE_URL = APP_CONFIG.API_URL;
 
 let selectedStartDate = null;
-let selectedStartDateString = null; // برای ذخیره دقیق متن تاریخ
+let selectedStartDateString = null;
 
-// راه‌اندازی تقویم شمسی
 function initDatepicker() {
-  if (typeof $ === 'undefined' || !$.fn.persianDatepicker) {
-    console.error("کتابخانه تقویم لود نشده است.");
-    return;
-  }
+  if (typeof $ === 'undefined' || !$.fn.persianDatepicker) return;
   
   $("#sh-start").persianDatepicker({
     format: 'YYYY/MM/DD HH:mm',
@@ -20,7 +16,6 @@ function initDatepicker() {
     initialValue: false,
     autoClose: true,
     onSelect: function(unix, date) {
-      // تبدیل تاریخ شمسی انتخاب شده به فرمت استاندارد میلادی برای دیتابیس
       const d = new Date(unix);
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -49,23 +44,11 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
 
-// دریافت همه رکوردها با صفحه‌بندی
+// *** برگشت به روش ساده و کارآمد قبلی (حل مشکل کرش) ***
 async function getTable(table) {
-  let allData = [];
-  let offset = 0;
-  const limit = 100;
-  
-  while (true) {
-    const res = await fetch(`${BASE_URL}/${table}?limit=${limit}&offset=${offset}`, { headers });
-    const data = await res.json();
-    const items = data.data || data;
-    
-    if (!Array.isArray(items) || items.length === 0) break;
-    allData = allData.concat(items);
-    if (items.length < limit) break;
-    offset += limit;
-  }
-  return allData;
+  const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
+  const data = await res.json();
+  return data.data || data;
 }
 
 async function insertTable(table, payload) {
@@ -116,15 +99,8 @@ function renderCompanies() {
   const cList = document.getElementById("company-list");
   const cSelect = document.getElementById("s-company");
   cList.innerHTML = ""; cSelect.innerHTML = "<option value=''>انتخاب شرکت...</option>";
-  
   globalCompanies.forEach(c => {
-    cList.innerHTML += `
-      <div class="item">
-        <div style="display:flex; justify-content:space-between;">
-          <div><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div>
-          <button onclick="deleteItem('companies', '${c.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
-        </div>
-      </div>`;
+    cList.innerHTML += `<div class="item"><div style="display:flex; justify-content:space-between;"><div><strong>${c.name}</strong><br><small>${c.contact_phone || ''}</small></div><button onclick="deleteItem('companies', '${c.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
     cSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
   });
 }
@@ -133,17 +109,10 @@ function renderSites() {
   const sList = document.getElementById("site-list");
   const pSiteSelect = document.getElementById("p-site");
   sList.innerHTML = ""; pSiteSelect.innerHTML = "<option value=''>انتخاب سایت...</option>";
-  
   globalSites.forEach(s => {
     const comp = globalCompanies.find(c => c.id === s.company_id);
     const compName = comp ? comp.name : '';
-    sList.innerHTML += `
-      <div class="item">
-        <div style="display:flex; justify-content:space-between;">
-          <div><strong>${s.name}</strong><br><small>${compName}</small></div>
-          <button onclick="deleteItem('sites', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
-        </div>
-      </div>`;
+    sList.innerHTML += `<div class="item"><div style="display:flex; justify-content:space-between;"><div><strong>${s.name}</strong><br><small>${compName}</small></div><button onclick="deleteItem('sites', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
     pSiteSelect.innerHTML += `<option value="${s.id}">${s.name} (${compName})</option>`;
   });
 }
@@ -152,13 +121,7 @@ function renderGuards() {
   const gList = document.getElementById("guard-list");
   gList.innerHTML = "";
   globalGuards.forEach(g => {
-    gList.innerHTML += `
-      <div class="item">
-        <div style="display:flex; justify-content:space-between;">
-          <div><strong>${g.full_name}</strong><br><small>${g.phone || ''}</small></div>
-          <button onclick="deleteItem('guards', '${g.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
-        </div>
-      </div>`;
+    gList.innerHTML += `<div class="item"><div style="display:flex; justify-content:space-between;"><div><strong>${g.full_name}</strong><br><small>${g.phone || ''}</small></div><button onclick="deleteItem('guards', '${g.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
   });
 }
 
@@ -168,13 +131,7 @@ function renderPosts() {
   globalPosts.forEach(p => {
     const site = globalSites.find(s => s.id === p.site_id);
     const siteName = site ? site.name : '';
-    pList.innerHTML += `
-      <div class="item">
-        <div style="display:flex; justify-content:space-between;">
-          <div><strong>${p.name}</strong><br><small>سایت: ${siteName}</small></div>
-          <button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button>
-        </div>
-      </div>`;
+    pList.innerHTML += `<div class="item"><div style="display:flex; justify-content:space-between;"><div><strong>${p.name}</strong><br><small>سایت: ${siteName}</small></div><button onclick="deleteItem('posts', '${p.id}', this)" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
   });
 }
 
@@ -197,7 +154,6 @@ function renderShiftSelectors() {
     const site = globalSites.find(s => s.id === p.site_id);
     const siteName = site ? site.name : 'بدون سایت';
     const opt = `<option value="${p.id}">${p.name} - ${siteName}</option>`;
-    
     shiftPost.innerHTML += opt;
     filterPost.innerHTML += opt;
     deletePost.innerHTML += opt;
@@ -212,129 +168,77 @@ function renderShiftSelectors() {
 }
 
 document.getElementById("company-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const btn = e.target.querySelector("button");
-  setLoading(btn, true);
-  try {
-    await insertTable("companies", { name: document.getElementById("c-name").value, contact_phone: document.getElementById("c-phone").value });
-    document.getElementById("c-name").value = ""; document.getElementById("c-phone").value = "";
-    await loadAllData();
-  } catch(err) { alert(err.message); }
+  e.preventDefault(); const btn = e.target.querySelector("button"); setLoading(btn, true);
+  try { await insertTable("companies", { name: document.getElementById("c-name").value, contact_phone: document.getElementById("c-phone").value }); document.getElementById("c-name").value = ""; document.getElementById("c-phone").value = ""; await loadAllData(); } catch(err) { alert(err.message); }
   setLoading(btn, false, "افزودن شرکت");
 });
 
 document.getElementById("site-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const company_id = document.getElementById("s-company").value;
-  if (!company_id) return alert("ابتدا یک شرکت انتخاب کنید.");
-  const btn = e.target.querySelector("button");
-  setLoading(btn, true);
-  try {
-    await insertTable("sites", { company_id, name: document.getElementById("s-name").value, address: document.getElementById("s-address").value });
-    document.getElementById("s-name").value = ""; document.getElementById("s-address").value = "";
-    await loadAllData();
-  } catch(err) { alert(err.message); }
+  e.preventDefault(); const company_id = document.getElementById("s-company").value; if (!company_id) return alert("ابتدا یک شرکت انتخاب کنید."); const btn = e.target.querySelector("button"); setLoading(btn, true);
+  try { await insertTable("sites", { company_id, name: document.getElementById("s-name").value, address: document.getElementById("s-address").value }); document.getElementById("s-name").value = ""; document.getElementById("s-address").value = ""; await loadAllData(); } catch(err) { alert(err.message); }
   setLoading(btn, false, "افزودن سایت");
 });
 
+// *** اضافه شدن فیلد کد ملی برای نگهبان ***
 document.getElementById("guard-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const btn = e.target.querySelector("button");
-  setLoading(btn, true);
-  try {
-    await insertTable("guards", { full_name: document.getElementById("g-name").value, phone: document.getElementById("g-phone").value, national_id: document.getElementById("g-national").value });
-    document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = ""; document.getElementById("g-national").value = "";
-    await loadAllData();
+  e.preventDefault(); const btn = e.target.querySelector("button"); setLoading(btn, true);
+  try { 
+    await insertTable("guards", { 
+      full_name: document.getElementById("g-name").value, 
+      phone: document.getElementById("g-phone").value,
+      national_id: document.getElementById("g-national").value 
+    }); 
+    document.getElementById("g-name").value = ""; document.getElementById("g-phone").value = ""; document.getElementById("g-national").value = ""; await loadAllData(); 
   } catch(err) { alert(err.message); }
   setLoading(btn, false, "افزودن نگهبان");
 });
 
 document.getElementById("post-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const site_id = document.getElementById("p-site").value;
-  if (!site_id) return alert("سایت را انتخاب کنید");
-  const btn = e.target.querySelector("button");
-  setLoading(btn, true);
-  try {
-    await insertTable("posts", { site_id, name: document.getElementById("p-name").value });
-    document.getElementById("p-name").value = "";
-    await loadAllData();
-  } catch(err) { alert(err.message); }
+  e.preventDefault(); const site_id = document.getElementById("p-site").value; if (!site_id) return alert("سایت را انتخاب کنید"); const btn = e.target.querySelector("button"); setLoading(btn, true);
+  try { await insertTable("posts", { site_id, name: document.getElementById("p-name").value }); document.getElementById("p-name").value = ""; await loadAllData(); } catch(err) { alert(err.message); }
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- نمایش لیست شیفت‌ها (با تاریخ شمسی) ---
 async function loadShifts() {
   let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
   const filterVal = document.getElementById("filter-shift-post").value;
   
-  if (filterVal) {
-    shifts = shifts.filter(s => s.post_id === filterVal);
-  }
-
+  if (filterVal) shifts = shifts.filter(s => s.post_id === filterVal);
   shList.innerHTML = "";
-  if (shifts.length === 0) {
-    shList.innerHTML = "<p style='color:#94a3b8; text-align:center;'>هیچ شیفتی ثبت نشده است.</p>";
-    return;
-  }
+  if (shifts.length === 0) { shList.innerHTML = "<p style='color:#94a3b8; text-align:center;'>هیچ شیفتی ثبت نشده است.</p>"; return; }
 
   shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
-    
     let start = 'نامشخص';
     if (s.check_in) {
       const d = new Date(s.check_in);
       start = d.toLocaleDateString('fa-IR') + ' - ' + d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
     }
-    
-    shList.innerHTML += `
-      <div class="item" style="border-right: 4px solid #3b82f6;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <strong>${g ? g.full_name : 'نامشخص'}</strong> در <strong>${p ? p.name : 'نامشخص'}</strong><br>
-            <small style="color:#94a3b8">زمان شروع: ${start}</small>
-          </div>
-          <button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">حذف</button>
-        </div>
-      </div>`;
+    shList.innerHTML += `<div class="item" style="border-right: 4px solid #3b82f6;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><strong>${g ? g.full_name : 'نامشخص'}</strong> در <strong>${p ? p.name : 'نامشخص'}</strong><br><small style="color:#94a3b8">زمان شروع: ${start}</small></div><button onclick="deleteItem('at', '${s.id}', this)" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">حذف</button></div></div>`;
   });
 }
 
-// --- حذف گروهی ---
 document.getElementById("delete-post-btn").addEventListener("click", async () => {
   const post_id = document.getElementById("delete-post-select").value;
   if (!post_id) return alert("لطفاً ابتدا یک پست را انتخاب کنید.");
   const postName = globalPosts.find(p => p.id === post_id)?.name || "این پست";
   if (!confirm(`آیا از حذف تمام شیفت‌های ثبت شده برای «${postName}» مطمئن هستید؟`)) return;
-
-  const btn = document.getElementById("delete-post-btn");
-  setLoading(btn, true, "در حال حذف...");
-
+  const btn = document.getElementById("delete-post-btn"); setLoading(btn, true, "در حال حذف...");
   try {
     const allShifts = await getTable("at") || [];
     const shiftsToDelete = allShifts.filter(s => s.post_id === post_id);
-    if (shiftsToDelete.length === 0) {
-      alert("هیچ شیفتی برای این پست پیدا نشد.");
-      setLoading(btn, false, "حذف شیفت‌های این پست");
-      return;
-    }
-    for (let s of shiftsToDelete) {
-      await deleteTable("at", s.id);
-      await new Promise(r => setTimeout(r, 500));
-    }
+    if (shiftsToDelete.length === 0) { alert("هیچ شیفتی برای این پست پیدا نشد."); setLoading(btn, false, "حذف شیفت‌های این پست"); return; }
+    for (let s of shiftsToDelete) { await deleteTable("at", s.id); await new Promise(r => setTimeout(r, 500)); }
     alert(`تعداد ${shiftsToDelete.length} شیفت مربوط به این پست حذف شد.`);
     await loadShifts();
-  } catch (err) {
-    alert("خطا در حذف: " + err.message);
-  }
+  } catch (err) { alert("خطا در حذف: " + err.message); }
   setLoading(btn, false, "حذف شیفت‌های این پست");
 });
 
-// --- ثبت و تولید خودکار (با ساعت دقیق) ---
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const post_id = document.getElementById("sh-post").value;
@@ -355,18 +259,14 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     if (shift_type === "12-24" || shift_type === "12-12") { workHours = 12; }
 
     let guardsQueue = [g1, g2, g3];
-    
-    // استفاده از متن دقیق تاریخ که در تقویم انتخاب شده
     let currentStart = new Date(selectedStartDateString);
     let successCount = 0;
-    
     const endDate = new Date(currentStart.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
       const currentGuard = guardsQueue.shift(); 
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
-      // تبدیل به فرمت متنی دقیق (بدون تغییر تایم‌زون)
       const y = currentStart.getFullYear();
       const m = String(currentStart.getMonth() + 1).padStart(2, '0');
       const d = String(currentStart.getDate()).padStart(2, '0');
@@ -385,17 +285,13 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       successCount++;
       guardsQueue.push(currentGuard);
       currentStart = new Date(currentEnd.getTime());
-      
-      // تاخیر برای جلوگیری از خطای Rate Limit
       await new Promise(resolve => setTimeout(resolve, 800));
     }
 
     alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
-    
     document.getElementById("filter-shift-post").value = post_id;
     if ($("#sh-start").length) $("#sh-start").val(""); 
     selectedStartDateString = null;
-    
     await loadShifts();
   } catch(err) { alert("خطا در ثبت شیفت: " + err.message); }
   setLoading(btn, false, "تولید خودکار جدول");
@@ -403,16 +299,8 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
 
 window.deleteItem = async function(table, id, btnElement) {
   if (!confirm("مطمئن هستید؟")) return;
-  btnElement.textContent = "...";
-  btnElement.disabled = true;
-  try {
-    await deleteTable(table, id);
-    await loadAllData();
-  } catch(err) {
-    alert(err.message);
-    btnElement.textContent = "حذف";
-    btnElement.disabled = false;
-  }
+  btnElement.textContent = "..."; btnElement.disabled = true;
+  try { await deleteTable(table, id); await loadAllData(); } catch(err) { alert(err.message); btnElement.textContent = "حذف"; btnElement.disabled = false; }
 }
 
 checkAuth();
