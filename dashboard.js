@@ -6,10 +6,10 @@ const BASE_URL = APP_CONFIG.API_URL;
 
 let selectedStartDate = null;
 
-// تابع راه‌اندازی تقویم (با تاخیر اجرا می‌شود تا فایل‌های محلی لود شوند)
+// راه‌اندازی تقویم شمسی
 function initDatepicker() {
   if (typeof $ === 'undefined' || !$.fn.persianDatepicker) {
-    console.error("کتابخانه تقویم لود نشده است. مسیرهای پوشه libs را بررسی کنید.");
+    console.error("کتابخانه تقویم لود نشده است.");
     return;
   }
   
@@ -30,7 +30,6 @@ function checkAuth() {
   document.getElementById("user-email").textContent = localStorage.getItem("user_email") || "مدیر";
   
   loadAllData();
-  // راه‌اندازی تقویم بعد از بارگذاری اولیه صفحه
   setTimeout(initDatepicker, 500);
 }
 
@@ -40,8 +39,9 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
 
+// دریافت همه رکوردها (با محدودیت ۱۰۰۰ تایی برای جلوگیری از قطع شدن)
 async function getTable(table) {
-  const res = await fetch(`${BASE_URL}/${table}`, { headers });
+  const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
   const data = await res.json();
   return data.data || data;
 }
@@ -243,7 +243,6 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
 
 // --- نمایش لیست شیفت‌ها ---
 async function loadShifts() {
-  // همیشه همه شیفت‌ها را می‌خوانیم تا اطلاعات پاک نشوند
   let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
   const filterVal = document.getElementById("filter-shift-post").value;
@@ -259,7 +258,6 @@ async function loadShifts() {
     return;
   }
 
-  // مرتب سازی بر اساس زمان شروع
   shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
   shifts.forEach(s => {
@@ -281,7 +279,7 @@ async function loadShifts() {
   });
 }
 
-// --- حذف گروهی شیفت‌های یک پست ---
+// --- حذف گروهی ---
 document.getElementById("delete-post-btn").addEventListener("click", async () => {
   const post_id = document.getElementById("delete-post-select").value;
   if (!post_id) return alert("لطفاً ابتدا یک پست را انتخاب کنید.");
@@ -304,7 +302,7 @@ document.getElementById("delete-post-btn").addEventListener("click", async () =>
 
     for (let s of shiftsToDelete) {
       await deleteTable("at", s.id);
-      await new Promise(r => setTimeout(r, 500)); // جلوگیری از خطای Rate Limit
+      await new Promise(r => setTimeout(r, 500));
     }
     
     alert(`تعداد ${shiftsToDelete.length} شیفت مربوط به این پست حذف شد.`);
@@ -316,7 +314,6 @@ document.getElementById("delete-post-btn").addEventListener("click", async () =>
   setLoading(btn, false, "حذف شیفت‌های این پست");
 });
 
-// تبدیل تاریخ به فرمت استاندارد دیتابیس
 function formatLocalDate(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -370,7 +367,6 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       guardsQueue.push(currentGuard);
       currentStart = new Date(currentEnd.getTime());
 
-      // وقفه برای جلوگیری از خطای Rate Limit
       await new Promise(resolve => setTimeout(resolve, 800));
     }
 

@@ -4,8 +4,9 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
+// دریافت همه رکوردها (با محدودیت ۱۰۰۰ تایی)
 async function getTable(table) {
-  const res = await fetch(`${BASE_URL}/${table}`, { headers });
+  const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
   const data = await res.json();
   return data.data || data;
 }
@@ -40,7 +41,7 @@ async function loadSchedule() {
       return;
     }
 
-    shifts.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
+    shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
     const uniqueGuardIds = [...new Set(shifts.map(s => s.guard_id))];
 
