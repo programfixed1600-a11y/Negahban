@@ -6,7 +6,7 @@ const BASE_URL = APP_CONFIG.API_URL;
 
 let selectedStartDate = null;
 
-// راه اندازی تقویم شمسی
+// راه اندازی مجدد تقویم با تنظیمات اولیه
 $(document).ready(function() {
   $("#sh-start").persianDatepicker({
     format: 'YYYY/MM/DD HH:mm',
@@ -235,10 +235,12 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
 
 // --- نمایش شیفت‌ها ---
 async function loadShifts() {
+  // همیشه همه شیفت‌ها را از دیتابیس می‌خوانیم
   let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
   const filterVal = document.getElementById("filter-shift-post").value;
   
+  // اعمال فیلتر
   if (filterVal) {
     shifts = shifts.filter(s => s.post_id === filterVal);
   }
@@ -250,14 +252,13 @@ async function loadShifts() {
     return;
   }
 
-  // مرتب‌سازی با استفاده از رشته تاریخ (فرمت YYYY-MM-DD)
+  // مرتب‌سازی
   shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
     
-    // نمایش تمیزتر تاریخ (تبدیل T به فاصله)
     const start = s.check_in ? s.check_in.replace('T', ' ') : 'نامشخص';
     
     shList.innerHTML += `
@@ -273,10 +274,10 @@ async function loadShifts() {
   });
 }
 
-// حذف انتخابی بر اساس پست
+// حذف گروهی دقیقاً بر اساس پست انتخاب شده
 document.getElementById("delete-post-btn").addEventListener("click", async () => {
   const post_id = document.getElementById("delete-post-select").value;
-  if (!post_id) return alert("لطفاً ابتدا یک پست را برای حذف انتخاب کنید.");
+  if (!post_id) return alert("لطفاً ابتدا یک پست را انتخاب کنید.");
   
   const postName = globalPosts.find(p => p.id === post_id)?.name || "این پست";
   if (!confirm(`آیا از حذف تمام شیفت‌های ثبت شده برای «${postName}» مطمئن هستید؟`)) return;
@@ -285,11 +286,19 @@ document.getElementById("delete-post-btn").addEventListener("click", async () =>
   setLoading(btn, true, "در حال حذف...");
 
   try {
-    const shiftsToDelete = (await getTable("at") || []).filter(s => s.post_id === post_id);
+    // گرفتن لیست تازه از دیتابیس برای اطمینان
+    const allShifts = await getTable("at") || [];
+    const shiftsToDelete = allShifts.filter(s => s.post_id === post_id);
     
+    if (shiftsToDelete.length === 0) {
+      alert("هیچ شیفتی برای این پست پیدا نشد.");
+      setLoading(btn, false, "حذف شیفت‌های این پست");
+      return;
+    }
+
     for (let s of shiftsToDelete) {
       await deleteTable("at", s.id);
-      await new Promise(r => setTimeout(r, 500)); // تاخیر برای فیکارو
+      await new Promise(r => setTimeout(r, 500));
     }
     
     alert(`تعداد ${shiftsToDelete.length} شیفت مربوط به این پست حذف شد.`);
@@ -301,7 +310,7 @@ document.getElementById("delete-post-btn").addEventListener("click", async () =>
   setLoading(btn, false, "حذف شیفت‌های این پست");
 });
 
-// تبدیل تاریخ به فرمت استاندارد بدون تغییر ساعت (جلوگیری از باگ تایم‌زون)
+// تبدیل تاریخ به فرمت استاندارد
 function formatLocalDate(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -335,14 +344,12 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     let currentStart = new Date(selectedStartDate.getTime());
     let successCount = 0;
     
-    // محاسبه دقیق تاریخ پایان
     const endDate = new Date(selectedStartDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
       const currentGuard = guardsQueue.shift(); 
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
-      // استفاده از تابع اختصاصی برای جلوگیری از باگ تایم‌زون
       const startStr = formatLocalDate(currentStart);
       const endStr = formatLocalDate(currentEnd);
 
@@ -355,16 +362,15 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       
       successCount++;
       guardsQueue.push(currentGuard);
-      
-      // شیفت بعدی دقیقا از پایان شیفت قبلی شروع می‌شود
       currentStart = new Date(currentEnd.getTime());
 
-      // وقفه ۱ ثانیه‌ای برای جلوگیری از خطای Rate Limit فیکارو
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // تاخیر برای جلوگیری از خطای فیکارو
+      await new Promise(resolve => setTimeout(resolve, 800));
     }
 
     alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
     
+    // بعد از اتمام، فیلتر را روی همان پست تنظیم می‌کنیم تا همه شیفت‌ها (جدید و قدیم) را ببینید
     document.getElementById("filter-shift-post").value = post_id;
     $("#sh-start").val(""); 
     selectedStartDate = null;
