@@ -4,7 +4,7 @@ const headers = {
 };
 const BASE_URL = APP_CONFIG.API_URL;
 
-// تابعی برای تبدیل تاریخ شمسی به میلادی بدون نیاز به کتابخانه (محاسبه ریاضی)
+// تابع تبدیل تاریخ شمسی به میلادی (بدون کتابخانه خارجی)
 function jalaliToGregorian(jy, jm, jd) {
   jy += 1595;
   let days = -355668 + (365 * jy) + (~~(jy / 33) * 8) + ~~(((jy % 33) + 3) / 4) + jd + ((jm < 7) ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
@@ -36,8 +36,6 @@ function checkAuth() {
   const session = localStorage.getItem("fikaro_session");
   if (!session) return (window.location.href = "index.html");
   document.getElementById("user-email").textContent = localStorage.getItem("user_email") || "مدیر";
-  
-  initDropdowns();
   loadAllData();
 }
 
@@ -46,39 +44,6 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   localStorage.removeItem("user_email");
   window.location.href = "index.html";
 });
-
-// --- پر کردن منوهای کشویی تاریخ و ساعت ---
-function initDropdowns() {
-  const yearSelect = document.getElementById("sh-year");
-  const monthSelect = document.getElementById("sh-month");
-  const daySelect = document.getElementById("sh-day");
-  const hourSelect = document.getElementById("sh-hour");
-  const minuteSelect = document.getElementById("sh-minute");
-
-  yearSelect.innerHTML = "";
-  for (let y = 1400; y <= 1410; y++) {
-    yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
-  }
-
-  const months = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-  monthSelect.innerHTML = "";
-  months.forEach((m, i) => {
-    monthSelect.innerHTML += `<option value="${i+1}">${m}</option>`;
-  });
-
-  daySelect.innerHTML = "";
-  for (let d = 1; d <= 31; d++) {
-    daySelect.innerHTML += `<option value="${d}">${d}</option>`;
-  }
-
-  hourSelect.innerHTML = "";
-  for (let h = 0; h <= 23; h++) {
-    const hh = String(h).padStart(2, '0');
-    hourSelect.innerHTML += `<option value="${hh}">${hh}</option>`;
-  }
-
-  minuteSelect.innerHTML = `<option value="00">00</option><option value="30">30</option>`;
-}
 
 async function getTable(table) {
   const res = await fetch(`${BASE_URL}/${table}?limit=1000`, { headers });
@@ -254,31 +219,18 @@ async function loadShifts() {
       const dateParts = parts[0].split('-');
       const timeStr = parts[1] || "00:00";
       const gDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1])-1, parseInt(dateParts[2]));
-      
-      // تبدیل تاریخ میلادی به شمسی برای نمایش (با استفاده از کد ریاضی)
+      // تبدیل به شمسی برای نمایش در لیست
       const d = gDate;
       let gy = d.getFullYear(), gm = d.getMonth() + 1, gd = d.getDate();
       let jy = gy - 621;
-      let days = 0;
-      const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-      if (gy > 1600) { jy = gy - 621; }
-      let gy2 = (gm > 2) ? (gy + 1) : gy;
-      let days2 = 355666 + (365 * gy) + ~~((gy2 + 3) / 4) - ~~((gy2 + 99) / 100) + ~~((gy2 + 399) / 400) + gd + g_d_m[gm - 1];
+      let days2 = 355666 + (365 * gy) + ~~(((gm > 2 ? gy + 1 : gy) + 3) / 4) - ~~(((gm > 2 ? gy + 1 : gy) + 99) / 100) + ~~(((gm > 2 ? gy + 1 : gy) + 399) / 400) + gd + [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334][gm - 1];
       jy = -1595 + (33 * ~~(days2 / 12053));
       days2 %= 12053;
       jy += 4 * ~~(days2 / 1461);
       days2 %= 1461;
-      if (days2 > 365) {
-        jy += ~~((days2 - 1) / 365);
-        days2 = (days2 - 1) % 365;
-      }
-      if (days2 < 186) {
-        jm = 1 + ~~(days2 / 31);
-        jd = 1 + (days2 % 31);
-      } else {
-        jm = 7 + ~~((days2 - 186) / 30);
-        jd = 1 + ((days2 - 186) % 30);
-      }
+      if (days2 > 365) { jy += ~~((days2 - 1) / 365); days2 = (days2 - 1) % 365; }
+      let jm = days2 < 186 ? 1 + ~~(days2 / 31) : 7 + ~~((days2 - 186) / 30);
+      let jd = days2 < 186 ? 1 + (days2 % 31) : 1 + ((days2 - 186) % 30);
       
       start = `${jy}/${String(jm).padStart(2, '0')}/${String(jd).padStart(2, '0')} - ${timeStr}`;
     }
@@ -304,7 +256,7 @@ document.getElementById("delete-post-btn").addEventListener("click", async () =>
   setLoading(btn, false, "حذف شیفت‌های این پست");
 });
 
-// *** تولید شیفت با استفاده از محاسبه ریاضی تاریخ ***
+// *** تولید شیفت با خواندن از کادر ساده ***
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const post_id = document.getElementById("sh-post").value;
@@ -314,19 +266,21 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
   const g3 = document.getElementById("sh-guard3").value;
   const totalDays = parseInt(document.getElementById("sh-days").value);
   
-  const yy = parseInt(document.getElementById("sh-year").value);
-  const mm = parseInt(document.getElementById("sh-month").value);
-  const dd = parseInt(document.getElementById("sh-day").value);
-  const hh = document.getElementById("sh-hour").value;
-  const min = document.getElementById("sh-minute").value;
+  const dateVal = document.getElementById("sh-date").value.trim();
+  const timeVal = document.getElementById("sh-time").value.trim();
 
-  if (!post_id || !g1 || !g2 || !g3 || !yy || !mm || !dd || !hh || !min || !totalDays) return alert("همه فیلدها را پر کنید");
+  if (!post_id || !g1 || !g2 || !g3 || !dateVal || !timeVal || !totalDays) return alert("همه فیلدها را پر کنید");
   if (new Set([g1, g2, g3]).size !== 3) return alert("لطفاً ۳ نگهبان متفاوت انتخاب کنید.");
 
-  // تبدیل تاریخ شمسی به میلادی با تابع ریاضی
-  const [gy, gm, gd] = jalaliToGregorian(yy, mm, dd);
-  
-  // تنظیم زمان شروع دقیقاً با ساعت انتخابی
+  const dateParts = dateVal.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+  const timeParts = timeVal.match(/(\d{2}):(\d{2})/);
+
+  if (!dateParts || !timeParts) return alert("فرمت تاریخ یا ساعت اشتباه است. تاریخ: 1405/08/01 | ساعت: 08:00");
+
+  const [_, yy, mm, dd] = dateParts;
+  const [__, hh, min] = timeParts;
+
+  const [gy, gm, gd] = jalaliToGregorian(parseInt(yy), parseInt(mm), parseInt(dd));
   const parsedStartDate = new Date(gy, gm - 1, gd, parseInt(hh), parseInt(min));
 
   const btn = e.target.querySelector("button");
@@ -371,6 +325,8 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
     
     document.getElementById("filter-shift-post").value = post_id;
+    document.getElementById("sh-date").value = ""; 
+    document.getElementById("sh-time").value = "";
     await loadShifts();
   } catch(err) { alert("خطا در ثبت شیفت: " + err.message); }
   setLoading(btn, false, "تولید خودکار جدول");

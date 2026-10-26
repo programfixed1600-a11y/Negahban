@@ -27,10 +27,6 @@
     button.submit:hover { background:#2563eb; }
     .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
     .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
-    
-    /* استایل کادرهای ریز تاریخ */
-    .date-selects { display:flex; gap:5px; }
-    .date-selects select { margin-bottom:0; text-align:center; padding:8px; }
   </style>
 </head>
 <body>
@@ -119,25 +115,20 @@
             <select id="sh-guard3" required style="flex:1;"><option value="">نگهبان ۳...</option></select>
           </div>
 
-          <!-- کادرهای جداگانه تاریخ و ساعت -->
-          <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid #334155; margin-top:5px;">
-            <label style="color:#3b82f6; font-weight:bold; margin-bottom:8px;">زمان شروع (تاریخ و ساعت):</label>
-            
-            <div style="display:flex; gap:5px; margin-bottom:8px;">
-              <select id="sh-year" required style="flex:1;"></select>
-              <select id="sh-month" required style="flex:1;"></select>
-              <select id="sh-day" required style="flex:1;"></select>
+          <!-- کادر ساده برای تاریخ و ساعت -->
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div style="flex:2;">
+              <label style="color:#3b82f6; font-weight:bold;">تاریخ شروع (مثال: 1405/08/01):</label>
+              <input type="text" id="sh-date" placeholder="1405/08/01" required style="margin-bottom:0; text-align:center; direction:ltr;" />
             </div>
-
-            <div style="display:flex; gap:5px;">
-              <select id="sh-hour" required style="flex:1;"></select>
-              <select id="sh-minute" required style="flex:1;"></select>
+            <div style="flex:1;">
+              <label style="color:#3b82f6; font-weight:bold;">ساعت شروع (مثال: 08:00):</label>
+              <input type="text" id="sh-time" placeholder="08:00" required style="margin-bottom:0; text-align:center; direction:ltr;" />
             </div>
-          </div>
-
-          <div style="display:flex; align-items:center; gap:10px;">
-            <label style="margin:0; flex:1;">تعداد روز:</label>
-            <input type="number" id="sh-days" min="1" max="31" value="30" required style="margin:0; flex:2;" />
+            <div style="flex:1;">
+              <label>تعداد روز:</label>
+              <input type="number" id="sh-days" min="1" max="31" value="30" required style="margin-bottom:0;" />
+            </div>
           </div>
           
           <button type="submit" class="submit" style="height: 42px; margin-top:5px;">تولید خودکار جدول</button>
