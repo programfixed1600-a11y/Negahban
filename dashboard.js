@@ -14,7 +14,6 @@ $(document).ready(function() {
     initialValue: false,
     autoClose: true,
     onSelect: function(unix) {
-      // تبدیل تاریخ انتخاب شده به یک شیء Date استاندارد
       selectedStartDate = new persianDate(unix).toDate();
     }
   });
@@ -152,12 +151,14 @@ function renderPosts() {
 function renderShiftSelectors() {
   const shiftPost = document.getElementById("sh-post");
   const filterPost = document.getElementById("filter-shift-post");
+  const deletePost = document.getElementById("delete-post-select");
   const g1 = document.getElementById("sh-guard1");
   const g2 = document.getElementById("sh-guard2");
   const g3 = document.getElementById("sh-guard3");
   
   shiftPost.innerHTML = "<option value=''>انتخاب پست...</option>";
   filterPost.innerHTML = "<option value=''>همه پست‌ها</option>";
+  deletePost.innerHTML = "<option value=''>انتخاب پست برای حذف...</option>";
   g1.innerHTML = "<option value=''>نگهبان ۱...</option>";
   g2.innerHTML = "<option value=''>نگهبان ۲...</option>";
   g3.innerHTML = "<option value=''>نگهبان ۳...</option>";
@@ -169,6 +170,7 @@ function renderShiftSelectors() {
     
     shiftPost.innerHTML += opt;
     filterPost.innerHTML += opt;
+    deletePost.innerHTML += opt;
   });
   
   globalGuards.forEach(g => {
@@ -179,7 +181,6 @@ function renderShiftSelectors() {
   });
 }
 
-// --- ثبت فرم‌ها (شرکت، سایت، نگهبان، پست) ---
 document.getElementById("company-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
@@ -232,7 +233,7 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   setLoading(btn, false, "افزودن پست");
 });
 
-// --- بخش نمایش و حذف گروهی شیفت‌ها ---
+// --- نمایش شیفت‌ها ---
 async function loadShifts() {
   let shifts = await getTable("at") || [];
   const shList = document.getElementById("shift-list");
@@ -249,23 +250,14 @@ async function loadShifts() {
     return;
   }
 
-  shifts.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
-
-  // ما یک دکمه حذف گروهی در بالای لیست قرار می‌دهیم
-  let postTitle = filterVal ? globalPosts.find(p => p.id === filterVal)?.name : "همه پست‌ها";
-  
-  shList.innerHTML += `
-    <div style="margin-bottom:10px; display:flex; justify-content:flex-end;">
-      <button onclick="deleteAllShiftsForPost('${filterVal}')" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">
-        🗑️ حذف کل شیفت‌های پست (${postTitle})
-      </button>
-    </div>
-  `;
+  // مرتب‌سازی با استفاده از رشته تاریخ (فرمت YYYY-MM-DD)
+  shifts.sort((a, b) => a.check_in.localeCompare(b.check_in));
 
   shifts.forEach(s => {
     const g = globalGuards.find(x => x.id === s.guard_id);
     const p = globalPosts.find(x => x.id === s.post_id);
     
+    // نمایش تمیزتر تاریخ (تبدیل T به فاصله)
     const start = s.check_in ? s.check_in.replace('T', ' ') : 'نامشخص';
     
     shList.innerHTML += `
@@ -281,29 +273,35 @@ async function loadShifts() {
   });
 }
 
-// حذف گروهی شیفت‌های یک پست
-window.deleteAllShiftsForPost = async function(post_id) {
-  if (!post_id) return alert("لطفاً ابتدا از منوی فیلتر بالا، یک پست را انتخاب کنید تا شیفت‌های آن حذف شود.");
+// حذف انتخابی بر اساس پست
+document.getElementById("delete-post-btn").addEventListener("click", async () => {
+  const post_id = document.getElementById("delete-post-select").value;
+  if (!post_id) return alert("لطفاً ابتدا یک پست را برای حذف انتخاب کنید.");
   
   const postName = globalPosts.find(p => p.id === post_id)?.name || "این پست";
   if (!confirm(`آیا از حذف تمام شیفت‌های ثبت شده برای «${postName}» مطمئن هستید؟`)) return;
+
+  const btn = document.getElementById("delete-post-btn");
+  setLoading(btn, true, "در حال حذف...");
 
   try {
     const shiftsToDelete = (await getTable("at") || []).filter(s => s.post_id === post_id);
     
     for (let s of shiftsToDelete) {
       await deleteTable("at", s.id);
-      await new Promise(r => setTimeout(r, 300)); // وقفه برای جلوگیری از خطای Rate Limit
+      await new Promise(r => setTimeout(r, 500)); // تاخیر برای فیکارو
     }
     
-    alert("تمام شیفت‌های این پست حذف شد.");
+    alert(`تعداد ${shiftsToDelete.length} شیفت مربوط به این پست حذف شد.`);
     await loadShifts();
   } catch (err) {
     alert("خطا در حذف: " + err.message);
   }
-}
+  
+  setLoading(btn, false, "حذف شیفت‌های این پست");
+});
 
-// تبدیل تاریخ به فرمت میلادی برای ذخیره در دیتابیس
+// تبدیل تاریخ به فرمت استاندارد بدون تغییر ساعت (جلوگیری از باگ تایم‌زون)
 function formatLocalDate(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -313,7 +311,7 @@ function formatLocalDate(date) {
   return `${y}-${m}-${d}T${h}:${min}`;
 }
 
-// --- ثبت و تولید خودکار ---
+// --- تولید خودکار شیفت ---
 document.getElementById("shift-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const post_id = document.getElementById("sh-post").value;
@@ -334,19 +332,20 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
     if (shift_type === "12-24" || shift_type === "12-12") { workHours = 12; }
 
     let guardsQueue = [g1, g2, g3];
-    let currentStart = selectedStartDate;
+    let currentStart = new Date(selectedStartDate.getTime());
     let successCount = 0;
     
+    // محاسبه دقیق تاریخ پایان
     const endDate = new Date(selectedStartDate.getTime() + (totalDays * 24 * 60 * 60 * 1000));
 
     while (currentStart < endDate) {
       const currentGuard = guardsQueue.shift(); 
       let currentEnd = new Date(currentStart.getTime() + (workHours * 60 * 60 * 1000));
       
+      // استفاده از تابع اختصاصی برای جلوگیری از باگ تایم‌زون
       const startStr = formatLocalDate(currentStart);
       const endStr = formatLocalDate(currentEnd);
 
-      // فقط عملیات درج انجام می‌شود (هیچ حذفی در کار نیست)
       await insertTable("at", { 
         guard_id: currentGuard, 
         post_id, 
@@ -356,16 +355,18 @@ document.getElementById("shift-form").addEventListener("submit", async (e) => {
       
       successCount++;
       guardsQueue.push(currentGuard);
-      currentStart = currentEnd; 
+      
+      // شیفت بعدی دقیقا از پایان شیفت قبلی شروع می‌شود
+      currentStart = new Date(currentEnd.getTime());
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // وقفه ۱ ثانیه‌ای برای جلوگیری از خطای Rate Limit فیکارو
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     alert(`تعداد ${successCount} شیفت جدید برای این پست چیده شد.`);
     
-    // تنظیم خودکار فیلتر روی همان پست
     document.getElementById("filter-shift-post").value = post_id;
-    $("#sh-start").val(""); // خالی کردن کادر تقویم
+    $("#sh-start").val(""); 
     selectedStartDate = null;
     
     await loadShifts();

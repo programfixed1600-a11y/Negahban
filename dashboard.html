@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>پنل مدیریت | نگهبان‌یار</title>
   
-  <!-- پلاگین تقویم شمسی -->
   <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css" />
   
   <style>
@@ -31,7 +30,6 @@
     .item { background:#0f172a; padding:10px; border-radius:8px; margin-bottom:6px; border:1px solid #334155; font-size: 13px; }
     .list-container { max-height: 250px; overflow-y: auto; margin-top: 10px; }
     
-    /* استایل تقویم */
     .datepicker-plot-area { font-family: Tahoma, sans-serif !important; }
   </style>
 </head>
@@ -123,7 +121,6 @@
           <div style="display:flex; gap:10px; align-items:center;">
             <div style="flex:2;">
               <label>تاریخ و ساعت شروع (کلیک کنید):</label>
-              <!-- ورودی تقویم شمسی -->
               <input type="text" id="sh-start" placeholder="انتخاب تاریخ..." readonly style="margin-bottom:0; cursor:pointer; background:#1e293b;" />
             </div>
             <div style="flex:1;">
@@ -149,9 +146,18 @@
       </div>
       <div id="shift-list" class="list-container" style="max-height: 400px;"></div>
     </div>
+
+    <!-- بخش جدید: حذف شیفت‌های یک پست -->
+    <div class="card" style="border: 1px solid #ef4444;">
+      <h2 style="color:#ef4444;">حذف شیفت‌های یک پست</h2>
+      <p style="font-size:12px; color:#94a3b8;">اگر می‌خواهید شیفت‌های یک پست را پاک کنید (و بقیه پست‌ها دست نخورده بمانند)، پست مورد نظر را انتخاب کنید:</p>
+      <div style="display:flex; gap:10px;">
+        <select id="delete-post-select" style="flex:2; margin:0;"></select>
+        <button id="delete-post-btn" style="flex:1; border:none; background:#ef4444; color:white; border-radius:8px; font-weight:bold; cursor:pointer; font-family:inherit;">حذف شیفت‌های این پست</button>
+      </div>
+    </div>
   </main>
 
-  <!-- اسکریپت‌های تقویم -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
   <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
